@@ -1,0 +1,22 @@
+{
+  "name": "trend-wave",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "热浪 TREND WAVE · 多平台热搜聚合站（28 天 Vibe Coding 计划 Day 7 MVP）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.4",
+    "vite": "^5.4.11"
+  }
+}

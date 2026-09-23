@@ -8,6 +8,7 @@ node_modules/
 dist/
 build/
 .vite/
+.npm-cache/
 
 # 日志与临时
 *.log
