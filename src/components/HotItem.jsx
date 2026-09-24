@@ -18,7 +18,7 @@ export default function HotItem({ item, now }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-800/40"
+      className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-800/40 focus-visible:bg-slate-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
     >
       {/* 排名标 */}
       <span
@@ -40,9 +40,9 @@ export default function HotItem({ item, now }) {
           </span>
           <span className="text-orange-400/90">
             <span className="font-semibold">{formatHeat(item.heat)}</span>
-            <span className="ml-0.5 text-slate-500">热度</span>
+            <span className="ml-0.5 text-slate-400">热度</span>
           </span>
-          <span className="text-slate-500">{formatRelative(item.publishedAt, now)}</span>
+          <span className="text-slate-400">{formatRelative(item.publishedAt, now)}</span>
         </div>
       </div>
     </a>

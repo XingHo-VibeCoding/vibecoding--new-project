@@ -31,7 +31,7 @@ export default function ErrorState({ message, onRetry }) {
       </p>
 
       {message && (
-        <p className="mx-auto mt-3 max-w-lg overflow-x-auto rounded-lg border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-left font-mono text-xs text-slate-500">
+        <p className="mx-auto mt-3 max-w-lg overflow-x-auto rounded-lg border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-left font-mono text-xs text-slate-400">
           {message}
         </p>
       )}
@@ -39,7 +39,7 @@ export default function ErrorState({ message, onRetry }) {
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-6 rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-2 text-sm text-red-200 transition hover:border-red-400 hover:bg-red-500/20"
+          className="mt-6 rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-2 text-sm text-red-200 transition hover:border-red-400 hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
         >
           ↻ 重试
         </button>

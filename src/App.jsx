@@ -49,8 +49,8 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         {/* 大标题：四种状态下都在，让页面永远有一句"这是什么" */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-100">今天，全网在聊什么？</h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">今天，全网在聊什么？</h2>
+          <p className="mt-2 text-sm text-slate-400">
             3 个平台的热搜并排展示，每个分类用不同颜色标记。
           </p>
         </div>
@@ -78,18 +78,17 @@ export default function App() {
 
         {/* 后续步骤待办 */}
         <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
-          <p className="text-xs uppercase tracking-wider text-slate-500">后续步骤待办</p>
+          <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
           <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
-            <li><span className="text-orange-400">Day 9</span> · 用设计规则统一页面风格</li>
             <li><span className="text-orange-400">Day 12</span> · F3 关键字 / 标签筛选（Skill）</li>
             <li><span className="text-orange-400">Day 13</span> · F4 详情页 + 四种状态正式化</li>
-            <li><span className="text-slate-500">Day 17</span> · 接真实 API 替换 mock 数据</li>
+            <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
           </ul>
         </div>
       </main>
 
-      <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-600">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 8 四种页面状态已接入
+      <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 9 设计规则审查与修复
       </footer>
 
       {/* 开发态四状态切换器（演示用，Day 13 后删） */}

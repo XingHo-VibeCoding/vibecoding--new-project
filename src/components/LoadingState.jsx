@@ -29,7 +29,7 @@ export default function LoadingState({ platformIds = DEFAULT_IDS }) {
                 />
                 <span className="text-base font-semibold text-slate-400">{p.name}</span>
               </div>
-              <span className="text-xs text-slate-600">加载中…</span>
+              <span className="text-xs text-slate-400">加载中…</span>
             </header>
 
             <div className="space-y-3.5 p-4">

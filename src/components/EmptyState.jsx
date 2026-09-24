@@ -15,7 +15,7 @@ export default function EmptyState({
       {/* 空盒子图标 */}
       <svg
         viewBox="0 0 24 24"
-        className="mx-auto h-12 w-12 text-slate-600"
+        className="mx-auto h-12 w-12 text-slate-500"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
@@ -29,13 +29,13 @@ export default function EmptyState({
       </svg>
 
       <h3 className="mt-4 text-lg font-semibold text-slate-300">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{desc}</p>
-      {hint && <p className="mx-auto mt-1 max-w-md text-xs text-slate-600">{hint}</p>}
+      <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">{desc}</p>
+      {hint && <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">{hint}</p>}
 
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-6 rounded-lg border border-slate-600 bg-slate-800/50 px-5 py-2 text-sm text-slate-200 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300"
+          className="mt-6 rounded-lg border border-slate-600 bg-slate-800/50 px-5 py-2 text-sm text-slate-200 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
         >
           刷新试试
         </button>

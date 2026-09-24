@@ -17,9 +17,9 @@ const OPTIONS = [
 
 export default function DevStateSwitcher({ current, onChange }) {
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
-      <div className="flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-slate-950/90 px-3 py-1.5 shadow-lg shadow-black/40 backdrop-blur-md">
-        <span className="mr-1 select-none text-[10px] uppercase tracking-wider text-slate-500">
+    <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-slate-700/80 bg-slate-950/90 px-3 py-1.5 shadow-lg shadow-black/40 backdrop-blur-md sm:rounded-full">
+        <span className="mr-1 select-none text-xs font-medium text-slate-400 sm:inline">
           开发态演示
         </span>
         {OPTIONS.map((o) => {
@@ -29,7 +29,7 @@ export default function DevStateSwitcher({ current, onChange }) {
               key={o.key}
               onClick={() => onChange(o.key)}
               title={`切到「${o.label}」状态`}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60 ${
                 active
                   ? 'bg-slate-700 text-white'
                   : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'

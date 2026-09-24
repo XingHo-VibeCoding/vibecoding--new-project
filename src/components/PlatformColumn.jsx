@@ -26,7 +26,7 @@ export default function PlatformColumn({ platform, items, now }) {
           </h3>
         </div>
         <div className="text-right">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             TOP {expanded ? `1–${items.length}` : `1–${VISIBLE_COUNT}`} / {items.length}
           </p>
           <p className="mt-0.5 text-xs text-orange-400/80">
@@ -49,7 +49,7 @@ export default function PlatformColumn({ platform, items, now }) {
         <div className="border-t border-slate-800/60 p-3">
           <button
             onClick={() => setExpanded(true)}
-            className="w-full rounded-lg border border-slate-700/80 bg-slate-800/30 px-4 py-2.5 text-sm text-slate-300 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300"
+            className="w-full rounded-lg border border-slate-700/80 bg-slate-800/30 px-4 py-2.5 text-sm text-slate-300 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
           >
             展开剩余 {hiddenCount} 条 →
           </button>

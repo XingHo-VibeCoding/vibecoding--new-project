@@ -28,13 +28,13 @@ export default function BrandHeader({ stats, status, updatedAt }) {
               热浪 <span className="text-orange-500">TREND WAVE</span>
             </h1>
           </div>
-          <span className="hidden text-xs text-slate-500 sm:inline">
+          <span className="hidden text-xs text-slate-400 sm:inline">
             多平台热搜聚合 · 雷达站
           </span>
         </div>
-        {/* 登录入口：Day 23 才做 */}
+        {/* 登录入口：Day 23 才做（disabled：一眼看得出点不动） */}
         <button
-          className="shrink-0 rounded-full border border-slate-700 px-4 py-1.5 text-sm text-slate-400"
+          className="shrink-0 cursor-not-allowed rounded-full border border-slate-700 px-4 py-1.5 text-sm text-slate-400 opacity-60"
           disabled
           title="登录功能 Day 23 上线"
         >
@@ -44,7 +44,7 @@ export default function BrandHeader({ stats, status, updatedAt }) {
 
       {/* 第二行：更新时间 + 当前状态 */}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-6 pb-4 text-xs">
-        <span className="text-slate-500">
+        <span className="text-slate-400">
           数据更新于{' '}
           <span className="font-mono text-slate-300">
             {updatedAt ? formatClock(updatedAt) : '—:—:—'}
@@ -59,8 +59,8 @@ export default function BrandHeader({ stats, status, updatedAt }) {
         </span>
       </div>
 
-      {/* 数据指标行 */}
-      <div className="mx-auto max-w-7xl px-6 pb-6">
+      {/* 数据指标行（纵向节奏 20→16→12px 递减，统一 4px 网格） */}
+      <div className="mx-auto max-w-7xl px-6 pb-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <MetricCard
             label="今日收录"
@@ -85,10 +85,10 @@ export default function BrandHeader({ stats, status, updatedAt }) {
 
       {/* 进度指示 */}
       <div className="border-t border-slate-800/60 bg-slate-950/40">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-500">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
           <span>
-            第 2 周 · <span className="text-orange-400">Day 8</span>
-            <span className="text-slate-600">／28</span> 　四种页面状态已接入
+            第 2 周 · <span className="text-orange-400">Day 9</span>
+            <span className="text-slate-400">／28</span> 　设计规则审查与修复
           </span>
           <span>
             {PLATFORMS.length} 个平台 · 每平台 50 条 · 共 {stats.platformCount * 50} 条
@@ -107,9 +107,9 @@ function MetricCard({ label, value, hint, accent }) {
   }
   return (
     <div className={`rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm ${accentMap[accent]}`}>
-      <p className="text-xs uppercase tracking-wider opacity-80">{label}</p>
+      <p className="text-xs font-medium opacity-80">{label}</p>
       <p className="mt-1.5 text-2xl font-bold text-slate-100">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500 line-clamp-1">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-slate-400 line-clamp-1">{hint}</p>}
     </div>
   )
 }
