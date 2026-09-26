@@ -87,8 +87,8 @@ export default function BrandHeader({ stats, status, updatedAt }) {
       <div className="border-t border-slate-800/60 bg-slate-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
           <span>
-            第 2 周 · <span className="text-orange-400">Day 9</span>
-            <span className="text-slate-400">／28</span> 　设计规则审查与修复
+            第 2 周 · <span className="text-orange-400">Day 10</span>
+            <span className="text-slate-400">／28</span> 　平台选择与三列布局修复
           </span>
           <span>
             {PLATFORMS.length} 个平台 · 每平台 50 条 · 共 {stats.platformCount * 50} 条
