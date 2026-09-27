@@ -19,6 +19,8 @@ const DEFAULT_PLATFORMS = ['weibo', 'zhihu', 'douyin']
 const MAX_PLATFORMS = 3
 // localStorage 记忆键：Day 19 登录后改成同步到数据库
 const PLATFORM_STORAGE_KEY = 'trendwave:platforms'
+// Day 11 F5：收藏（未登录版）。Day 19 登录后换成数据库
+const FAVORITES_STORAGE_KEY = 'trendwave:favorites'
 
 // 读 localStorage 里记住的平台选择；没有 / 数据损坏 / 出现未知 id 时回退默认值
 function loadActivePlatforms() {
@@ -37,6 +39,20 @@ function loadActivePlatforms() {
   return DEFAULT_PLATFORMS
 }
 
+// 读 localStorage 里记住的收藏；没有 / 数据损坏时回退为空数组
+function loadFavorites() {
+  try {
+    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY)
+    if (raw) {
+      const ids = JSON.parse(raw)
+      if (Array.isArray(ids)) return ids.filter((x) => typeof x === 'string')
+    }
+  } catch {
+    /* localStorage 被禁用或 JSON 解析失败 → 没有收藏 */
+  }
+  return []
+}
+
 export default function App() {
   // 数据与状态：loading / success / empty / error 由 hook 统一管理
   // Day 17 把 hook 内部的 setTimeout 换成真实 fetch，这里的代码不用动
@@ -44,6 +60,38 @@ export default function App() {
 
   // F2 平台选择：初始值从 localStorage 读（Day 10 上线）
   const [activePlatforms, setActivePlatforms] = useState(loadActivePlatforms)
+
+  // F5 收藏 + 底部提示条（Day 11 上线，未登录存本地）
+  const [favorites, setFavorites] = useState(loadFavorites)
+  const [toast, setToast] = useState(null) // { type: 'saved' | 'removed' | 'error', text }
+
+  // 提示条 2.5 秒后自动消失（toast 变化才重新计时）
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 2500)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  // 收藏 / 取消收藏：
+  //   先写 localStorage，写成功才更新界面——存储和星星永远一致。
+  //   写失败（浏览器禁用存储等）→ 星星不变 + 弹错误提示，用户知道刷新后会丢。
+  function toggleFavorite(id) {
+    const next = favorites.includes(id)
+      ? favorites.filter((x) => x !== id)
+      : [id, ...favorites]
+
+    try {
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      setToast({ type: 'error', text: '保存失败：浏览器存储不可用，刷新后收藏不会保留' })
+      return // 界面不动，和存储保持一致
+    }
+
+    setFavorites(next)
+    setToast(next.includes(id)
+      ? { type: 'saved', text: '已收藏 ★（保存在本浏览器）' }
+      : { type: 'removed', text: '已取消收藏' })
+  }
 
   // 选择变化时写回 localStorage（放副作用到这里，不在渲染过程里写）
   useEffect(() => {
@@ -118,6 +166,8 @@ export default function App() {
                 platform={platform}
                 items={items.filter((i) => i.platform === platform.id)}
                 now={anchor}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
               />
             ))}
           </div>
@@ -132,6 +182,7 @@ export default function App() {
           <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
           <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
             <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
+            <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互（未登录版，存本浏览器）</li>
             <li><span className="text-orange-400">Day 12</span> · F3 关键字 / 标签筛选（Skill）</li>
             <li><span className="text-orange-400">Day 13</span> · F4 详情页 + 四种状态正式化</li>
             <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
@@ -140,11 +191,28 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 10 平台选择与三列布局修复
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 11 收藏交互（F5 未登录版）
       </footer>
 
       {/* 开发态四状态切换器（演示用，Day 13 后删） */}
       <DevStateSwitcher current={status} onChange={devSetStatus} />
+
+      {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`animate-toast fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium shadow-lg backdrop-blur-md ${
+            toast.type === 'error'
+              ? 'border-red-500/50 bg-red-950/80 text-red-300'
+              : toast.type === 'removed'
+                ? 'border-slate-600/60 bg-slate-800/85 text-slate-300'
+                : 'border-orange-500/50 bg-orange-950/80 text-orange-300'
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
     </div>
   )
 }

@@ -9,7 +9,7 @@ const RANK_STYLE = {
   3: { bg: 'bg-amber-500',   text: 'text-slate-900', glow: 'shadow-amber-500/30' },
 }
 
-export default function HotItem({ item, now }) {
+export default function HotItem({ item, now, isFavorited = false, onToggleFavorite }) {
   const cat = CATEGORY_MAP[item.category]
   const rankStyle = RANK_STYLE[item.rank] || { bg: 'bg-slate-700/60', text: 'text-slate-400', glow: '' }
 
@@ -45,6 +45,27 @@ export default function HotItem({ item, now }) {
           <span className="text-slate-400">{formatRelative(item.publishedAt, now)}</span>
         </div>
       </div>
+
+      {/* Day 11 F5：收藏星（PRD「我的收藏」第一步，未登录存本地）
+          放在 <a> 里面，必须拦截事件——否则点星会同时触发整条热搜的跳转 */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()   // 不触发外层 <a> 的跳转
+          e.stopPropagation()   // 也不让它冒泡
+          onToggleFavorite?.(item.id)
+        }}
+        aria-pressed={isFavorited}
+        aria-label={isFavorited ? `取消收藏：${item.title}` : `收藏：${item.title}`}
+        title={isFavorited ? '取消收藏' : '收藏'}
+        className={`shrink-0 self-start rounded-md px-1.5 py-0.5 text-base leading-6 transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60 ${
+          isFavorited
+            ? 'animate-pop text-orange-400 hover:text-orange-300'
+            : 'text-slate-500 hover:text-orange-300'
+        }`}
+      >
+        {isFavorited ? '★' : '☆'}
+      </button>
     </a>
   )
 }

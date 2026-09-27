@@ -4,7 +4,7 @@ import HotItem from './HotItem'
 
 const VISIBLE_COUNT = 10
 
-export default function PlatformColumn({ platform, items, now }) {
+export default function PlatformColumn({ platform, items, now, favorites = [], onToggleFavorite }) {
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? items : items.slice(0, VISIBLE_COUNT)
   const hiddenCount = items.length - VISIBLE_COUNT
@@ -39,7 +39,12 @@ export default function PlatformColumn({ platform, items, now }) {
       <ol className="flex-1 divide-y divide-slate-800/40 px-2 py-2">
         {visible.map((item) => (
           <li key={item.id}>
-            <HotItem item={item} now={now} />
+            <HotItem
+              item={item}
+              now={now}
+              isFavorited={favorites.includes(item.id)}
+              onToggleFavorite={onToggleFavorite}
+            />
           </li>
         ))}
       </ol>

@@ -12,3 +12,22 @@ body {
   background-color: #0a0e1a; /* 深夜蓝黑 */
   color: #e2e8f0;
 }
+
+/* Day 11：收藏星的「弹一下」反馈动画（成功瞬间 0.3s） */
+@keyframes pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.4) rotate(8deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.animate-pop {
+  animation: pop 0.3s ease-out;
+}
+
+/* Day 11：底部提示条的入场动画（淡入 + 从下滑上来） */
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.animate-toast {
+  animation: toast-in 0.25s ease-out;
+}
