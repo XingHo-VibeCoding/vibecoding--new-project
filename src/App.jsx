@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import BrandHeader from './components/BrandHeader'
 import PlatformColumn from './components/PlatformColumn'
 import PlatformSelector from './components/PlatformSelector'
+import FilterBar from './components/FilterBar'
 import LoadingState from './components/LoadingState'
 import EmptyState from './components/EmptyState'
 import ErrorState from './components/ErrorState'
@@ -64,6 +65,10 @@ export default function App() {
   // F5 收藏 + 底部提示条（Day 11 上线，未登录存本地）
   const [favorites, setFavorites] = useState(loadFavorites)
   const [toast, setToast] = useState(null) // { type: 'saved' | 'removed' | 'error', text }
+
+  // F3 筛选（Day 12 上线）：关键词 + 分类多选，临时状态不进 localStorage
+  const [keyword, setKeyword] = useState('')
+  const [activeCategories, setActiveCategories] = useState([])
 
   // 提示条 2.5 秒后自动消失（toast 变化才重新计时）
   useEffect(() => {
@@ -131,6 +136,30 @@ export default function App() {
 
   const activePlatformObjs = activePlatforms.map((id) => PLATFORMS.find((p) => p.id === id))
 
+  // F3 筛选逻辑：关键词（标题包含，不区分大小写）+ 分类（多选，不选=全部），
+  // 两个条件同时存在时取交集（且的关系）。只筛「当前展示的平台」以外的全部条目也一起筛，口径一致。
+  const kw = keyword.trim().toLowerCase()
+  const hasFilter = kw !== '' || activeCategories.length > 0
+  const filteredItems = useMemo(() => {
+    if (!hasFilter) return items
+    return items.filter(
+      (i) =>
+        (kw === '' || i.title.toLowerCase().includes(kw)) &&
+        (activeCategories.length === 0 || activeCategories.includes(i.category)),
+    )
+  }, [items, kw, activeCategories, hasFilter])
+
+  function toggleCategory(id) {
+    setActiveCategories((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  function clearFilter() {
+    setKeyword('')
+    setActiveCategories([])
+  }
+
   return (
     <div className="min-h-screen pb-20">
       <BrandHeader
@@ -156,21 +185,35 @@ export default function App() {
         {status === DATA_STATUS.LOADING && <LoadingState platformIds={activePlatforms} />}
 
         {status === DATA_STATUS.SUCCESS && (
-          /* items-start：三列各自按内容高度排布，互不拉伸。
-             Day 10 修复——原先默认 stretch 会让「一列展开」把另外两列拉到同高，
-             配合列内 flex-1，另外两列的「展开剩余」按钮被顶到卡片最底部。 */
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-            {activePlatformObjs.map((platform) => (
-              <PlatformColumn
-                key={platform.id}
-                platform={platform}
-                items={items.filter((i) => i.platform === platform.id)}
-                now={anchor}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-              />
-            ))}
-          </div>
+          <>
+            {/* F3 筛选栏（Day 12 上线）：只在有数据时出现——没数据时筛选没有意义 */}
+            <FilterBar
+              keyword={keyword}
+              onKeywordChange={setKeyword}
+              activeCategories={activeCategories}
+              onToggleCategory={toggleCategory}
+              onClear={clearFilter}
+              matchCount={filteredItems.filter((i) => activePlatforms.includes(i.platform)).length}
+              totalCount={items.filter((i) => activePlatforms.includes(i.platform)).length}
+            />
+
+            {/* items-start：三列各自按内容高度排布，互不拉伸。
+               Day 10 修复——原先默认 stretch 会让「一列展开」把另外两列拉到同高，
+               配合列内 flex-1，另外两列的「展开剩余」按钮被顶到卡片最底部。 */}
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+              {activePlatformObjs.map((platform) => (
+                <PlatformColumn
+                  key={platform.id}
+                  platform={platform}
+                  items={filteredItems.filter((i) => i.platform === platform.id)}
+                  now={anchor}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                  isFiltering={hasFilter}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {status === DATA_STATUS.EMPTY && <EmptyState onRetry={retry} />}
@@ -183,7 +226,7 @@ export default function App() {
           <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
             <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
             <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互（未登录版，存本浏览器）</li>
-            <li><span className="text-orange-400">Day 12</span> · F3 关键字 / 标签筛选（Skill）</li>
+            <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
             <li><span className="text-orange-400">Day 13</span> · F4 详情页 + 四种状态正式化</li>
             <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
           </ul>
@@ -191,7 +234,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 11 收藏交互（F5 未登录版）
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 12 关键词与分类筛选（F3）
       </footer>
 
       {/* 开发态四状态切换器（演示用，Day 13 后删） */}

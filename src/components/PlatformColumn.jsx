@@ -1,12 +1,23 @@
 // 单平台榜单列（Day 7 第 3 步 F1：TOP 10 + 展开剩余 40 条）
+// Day 12：适配 F3 筛选——筛选生效时直接显示全部匹配（搜索场景下折叠反而碍事）；
+//         无匹配时列内给出提示而不是渲染空列表（用户需要知道"是没匹配"而不是"页面坏了"）
 import { useState } from 'react'
 import HotItem from './HotItem'
 
 const VISIBLE_COUNT = 10
 
-export default function PlatformColumn({ platform, items, now, favorites = [], onToggleFavorite }) {
+export default function PlatformColumn({
+  platform,
+  items,
+  now,
+  favorites = [],
+  onToggleFavorite,
+  isFiltering = false,
+}) {
   const [expanded, setExpanded] = useState(false)
-  const visible = expanded ? items : items.slice(0, VISIBLE_COUNT)
+  // 筛选生效 = 相当于自动展开：全部匹配直接可见
+  const showAll = expanded || isFiltering
+  const visible = showAll ? items : items.slice(0, VISIBLE_COUNT)
   const hiddenCount = items.length - VISIBLE_COUNT
 
   return (
@@ -27,30 +38,39 @@ export default function PlatformColumn({ platform, items, now, favorites = [], o
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-400">
-            TOP {expanded ? `1–${items.length}` : `1–${VISIBLE_COUNT}`} / {items.length}
+            TOP {showAll ? `1–${items.length}` : `1–${VISIBLE_COUNT}`} / {items.length}
           </p>
           <p className="mt-0.5 text-xs text-orange-400/80">
-            {expanded ? '已展开全部' : `${hiddenCount} 条待展开`}
+            {showAll ? (isFiltering ? `筛选出 ${items.length} 条` : '已展开全部') : `${hiddenCount} 条待展开`}
           </p>
         </div>
       </header>
 
-      {/* 榜单列表 */}
-      <ol className="flex-1 divide-y divide-slate-800/40 px-2 py-2">
-        {visible.map((item) => (
-          <li key={item.id}>
-            <HotItem
-              item={item}
-              now={now}
-              isFavorited={favorites.includes(item.id)}
-              onToggleFavorite={onToggleFavorite}
-            />
-          </li>
-        ))}
-      </ol>
+      {/* 榜单列表：无匹配时给出提示（F3 筛选的「无结果」路径） */}
+      {items.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+          <p className="text-sm text-slate-400">
+            {platform.name}没有匹配当前筛选条件的热搜
+          </p>
+          <p className="mt-1 text-xs text-slate-400">清空筛选即可恢复全部 {platform.name}内容</p>
+        </div>
+      ) : (
+        <ol className="flex-1 divide-y divide-slate-800/40 px-2 py-2">
+          {visible.map((item) => (
+            <li key={item.id}>
+              <HotItem
+                item={item}
+                now={now}
+                isFavorited={favorites.includes(item.id)}
+                onToggleFavorite={onToggleFavorite}
+              />
+            </li>
+          ))}
+        </ol>
+      )}
 
-      {/* 展开按钮（仅在未展开时显示） */}
-      {!expanded && hiddenCount > 0 && (
+      {/* 展开按钮（仅在未展开且不在筛选态时显示——筛选态本来就是全部显示） */}
+      {!showAll && hiddenCount > 0 && (
         <div className="border-t border-slate-800/60 p-3">
           <button
             onClick={() => setExpanded(true)}
