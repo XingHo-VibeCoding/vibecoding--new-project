@@ -1,6 +1,8 @@
 // 单个热搜条目（Day 7 第 3 步 F1：第 3 列才用到）
+// Day 13：点击整条不再跳外部原文，而是进站内详情页（PRD F4）——外链移到详情页的「查看原文」
 import { CATEGORY_MAP } from '../lib/mockData'
 import { formatHeat, formatRelative } from '../lib/mockData'
+import { ROUTES } from '../hooks/useHashRoute'
 
 // TOP 3 排名前三用的强调色
 const RANK_STYLE = {
@@ -15,9 +17,7 @@ export default function HotItem({ item, now, isFavorited = false, onToggleFavori
 
   return (
     <a
-      href={item.url}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={ROUTES.detail(item.id)}
       className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-800/40 focus-visible:bg-slate-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
     >
       {/* 排名标 */}

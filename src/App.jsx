@@ -2,17 +2,22 @@
 // Day 7 第 3 步：F1 三列布局 + 接 mock 数据
 // Day 8：接数据状态机，补齐「加载中 / 成功 / 空 / 错误」四种页面状态
 // Day 10：修复三列互相拉伸的问题（items-start）+ 新增平台选择栏（PRD F2 提前）
+// Day 13：hash 路由分发三个视图（V1 首页 / V2 详情 / V3 我的收藏）
 import { useEffect, useMemo, useState } from 'react'
 import BrandHeader from './components/BrandHeader'
 import PlatformColumn from './components/PlatformColumn'
 import PlatformSelector from './components/PlatformSelector'
 import FilterBar from './components/FilterBar'
+import DetailPage from './components/DetailPage'
+import FavoritesPage from './components/FavoritesPage'
+import ViewNav from './components/ViewNav'
 import LoadingState from './components/LoadingState'
 import EmptyState from './components/EmptyState'
 import ErrorState from './components/ErrorState'
 import DevStateSwitcher from './components/DevStateSwitcher'
 import { PLATFORMS } from './lib/mockData'
 import { useHotData, DATA_STATUS } from './hooks/useHotData'
+import { useHashRoute } from './hooks/useHashRoute'
 
 // 默认展示前 3 个平台：微博 / 知乎 / 抖音（PRD F2）
 const DEFAULT_PLATFORMS = ['weibo', 'zhihu', 'douyin']
@@ -55,6 +60,9 @@ function loadFavorites() {
 }
 
 export default function App() {
+  // 路由（Day 13）：#hash → 当前视图，切视图时自动回顶部
+  const route = useHashRoute()
+
   // 数据与状态：loading / success / empty / error 由 hook 统一管理
   // Day 17 把 hook 内部的 setTimeout 换成真实 fetch，这里的代码不用动
   const { status, items, errorMsg, anchor, retry, devSetStatus } = useHotData()
@@ -169,72 +177,105 @@ export default function App() {
       />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* 大标题：四种状态下都在，让页面永远有一句"这是什么" */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">今天，全网在聊什么？</h2>
-          <p className="mt-2 text-sm text-slate-400">
-            {PLATFORMS.length} 个平台的热搜聚合，下面自选 {MAX_PLATFORMS} 个并排展示，每个分类用不同颜色标记。
-          </p>
-        </div>
+        {/* 视图导航（Day 13）：三个视图共享，当前视图高亮 */}
+        <ViewNav current={route.view} />
 
-        {/* F2 平台选择栏：任意状态下都可以换平台 */}
-        <PlatformSelector active={activePlatforms} onToggle={togglePlatform} max={MAX_PLATFORMS} />
-
-        {/* ===== 四种页面状态：同一块位置，四种样子 ===== */}
-
-        {status === DATA_STATUS.LOADING && <LoadingState platformIds={activePlatforms} />}
-
-        {status === DATA_STATUS.SUCCESS && (
+        {/* ===== V1 首页：三列聚合 + 筛选 + 平台选择 ===== */}
+        {route.view === 'home' && (
           <>
-            {/* F3 筛选栏（Day 12 上线）：只在有数据时出现——没数据时筛选没有意义 */}
-            <FilterBar
-              keyword={keyword}
-              onKeywordChange={setKeyword}
-              activeCategories={activeCategories}
-              onToggleCategory={toggleCategory}
-              onClear={clearFilter}
-              matchCount={filteredItems.filter((i) => activePlatforms.includes(i.platform)).length}
-              totalCount={items.filter((i) => activePlatforms.includes(i.platform)).length}
-            />
+            {/* 大标题：四种状态下都在，让页面永远有一句"这是什么" */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">今天，全网在聊什么？</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {PLATFORMS.length} 个平台的热搜聚合，下面自选 {MAX_PLATFORMS} 个并排展示，每个分类用不同颜色标记。
+              </p>
+            </div>
 
-            {/* items-start：三列各自按内容高度排布，互不拉伸。
-               Day 10 修复——原先默认 stretch 会让「一列展开」把另外两列拉到同高，
-               配合列内 flex-1，另外两列的「展开剩余」按钮被顶到卡片最底部。 */}
-            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-              {activePlatformObjs.map((platform) => (
-                <PlatformColumn
-                  key={platform.id}
-                  platform={platform}
-                  items={filteredItems.filter((i) => i.platform === platform.id)}
-                  now={anchor}
-                  favorites={favorites}
-                  onToggleFavorite={toggleFavorite}
-                  isFiltering={hasFilter}
+            {/* F2 平台选择栏：任意状态下都可以换平台 */}
+            <PlatformSelector active={activePlatforms} onToggle={togglePlatform} max={MAX_PLATFORMS} />
+
+            {/* ===== 四种页面状态：同一块位置，四种样子 ===== */}
+
+            {status === DATA_STATUS.LOADING && <LoadingState platformIds={activePlatforms} />}
+
+            {status === DATA_STATUS.SUCCESS && (
+              <>
+                {/* F3 筛选栏（Day 12 上线）：只在有数据时出现——没数据时筛选没有意义 */}
+                <FilterBar
+                  keyword={keyword}
+                  onKeywordChange={setKeyword}
+                  activeCategories={activeCategories}
+                  onToggleCategory={toggleCategory}
+                  onClear={clearFilter}
+                  matchCount={filteredItems.filter((i) => activePlatforms.includes(i.platform)).length}
+                  totalCount={items.filter((i) => activePlatforms.includes(i.platform)).length}
                 />
-              ))}
+
+                {/* items-start：三列各自按内容高度排布，互不拉伸。
+                   Day 10 修复——原先默认 stretch 会让「一列展开」把另外两列拉到同高，
+                   配合列内 flex-1，另外两列的「展开剩余」按钮被顶到卡片最底部。 */}
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+                  {activePlatformObjs.map((platform) => (
+                    <PlatformColumn
+                      key={platform.id}
+                      platform={platform}
+                      items={filteredItems.filter((i) => i.platform === platform.id)}
+                      now={anchor}
+                      favorites={favorites}
+                      onToggleFavorite={toggleFavorite}
+                      isFiltering={hasFilter}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {status === DATA_STATUS.EMPTY && <EmptyState onRetry={retry} />}
+
+            {status === DATA_STATUS.ERROR && <ErrorState message={errorMsg} onRetry={retry} />}
+
+            {/* 后续步骤待办 */}
+            <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
+              <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
+              <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
+                <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
+                <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互（未登录版，存本浏览器）</li>
+                <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
+                <li><span className="text-emerald-400">Day 13 已完成</span> · F4 详情页 + 三视图路由（我的收藏上线）</li>
+                <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
+              </ul>
             </div>
           </>
         )}
 
-        {status === DATA_STATUS.EMPTY && <EmptyState onRetry={retry} />}
+        {/* ===== V2 详情页：PRD F4，四种状态由 DetailPage 内部处理 ===== */}
+        {route.view === 'detail' && (
+          <DetailPage
+            id={route.id}
+            status={status}
+            items={items}
+            errorMsg={errorMsg}
+            anchor={anchor}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            retry={retry}
+          />
+        )}
 
-        {status === DATA_STATUS.ERROR && <ErrorState message={errorMsg} onRetry={retry} />}
-
-        {/* 后续步骤待办 */}
-        <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
-          <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
-          <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
-            <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
-            <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互（未登录版，存本浏览器）</li>
-            <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
-            <li><span className="text-orange-400">Day 13</span> · F4 详情页 + 四种状态正式化</li>
-            <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
-          </ul>
-        </div>
+        {/* ===== V3 我的收藏：PRD V3，复用 Day 11 的收藏数据 ===== */}
+        {route.view === 'favorites' && (
+          <FavoritesPage
+            status={status}
+            items={items}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            now={anchor}
+          />
+        )}
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 12 关键词与分类筛选（F3）
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 13 三视图路由与详情页（F4）
       </footer>
 
       {/* 开发态四状态切换器（演示用，Day 13 后删） */}
