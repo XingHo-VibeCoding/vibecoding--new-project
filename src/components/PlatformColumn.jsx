@@ -69,15 +69,26 @@ export default function PlatformColumn({
         </ol>
       )}
 
-      {/* 展开按钮（仅在未展开且不在筛选态时显示——筛选态本来就是全部显示） */}
-      {!showAll && hiddenCount > 0 && (
+      {/* 展开 / 收起（筛选态不显示——筛选本来就是全部显示）
+          Day 14 最小修复：原先展开 50 条后没有任何收起入口，列一直占满整屏。
+          收起用中性色 hover（橙留给「展开」这个主动作），键盘焦点两颗都保留。 */}
+      {!isFiltering && hiddenCount > 0 && (
         <div className="border-t border-slate-800/60 p-3">
-          <button
-            onClick={() => setExpanded(true)}
-            className="w-full rounded-lg border border-slate-700/80 bg-slate-800/30 px-4 py-2.5 text-sm text-slate-300 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
-          >
-            展开剩余 {hiddenCount} 条 →
-          </button>
+          {expanded ? (
+            <button
+              onClick={() => setExpanded(false)}
+              className="w-full rounded-lg border border-slate-700/80 bg-slate-800/30 px-4 py-2.5 text-sm text-slate-300 transition hover:border-slate-500/80 hover:bg-slate-700/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60"
+            >
+              ↑ 收起，只看 TOP {VISIBLE_COUNT}
+            </button>
+          ) : (
+            <button
+              onClick={() => setExpanded(true)}
+              className="w-full rounded-lg border border-slate-700/80 bg-slate-800/30 px-4 py-2.5 text-sm text-slate-300 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
+            >
+              展开剩余 {hiddenCount} 条 →
+            </button>
+          )}
         </div>
       )}
     </section>
