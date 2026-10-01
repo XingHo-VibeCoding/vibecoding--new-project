@@ -1,0 +1,32 @@
+{
+  "version": "2.0",
+  "envId": "rednews-d5gd5vdss6b4d2119",
+  "framework": {
+    "name": "trend-wave",
+    "plugins": {
+      "client": {
+        "use": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "localPath": "dist",
+          "cloudPath": "/",
+          "envId": "rednews-d5gd5vdss6b4d2119"
+        }
+      }
+    }
+  },
+  "functionRootPath": "functions",
+  "functions": [
+    {
+      "name": "health",
+      "timeout": 5,
+      "envVariables": {},
+      "runtime": "Nodejs20.19",
+      "installDependency": false,
+      "framework": {
+        "name": "health",
+        "type": "function",
+        "path": "/api/health"
+      }
+    }
+  ]
+}
