@@ -33,3 +33,19 @@ npx -y -p @cloudbase/cli@latest tcb fn deploy health --path /api/health --force
 # 前端（先 rm -rf dist && npm run build，再上传）
 npx -y -p @cloudbase/cli@latest tcb hosting deploy dist / -e rednews-d5gd5vdss6b4d2119
 ```
+
+## 访问方式与两个「看起来像故障」的报错（Day 15 实测记录）
+
+**正确 URL（务必带全路径，别只开域名）：**
+
+| 用途 | 完整 URL |
+|---|---|
+| 云函数 | `https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/health` |
+| 前端页面 | `https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/` |
+
+| 现象 | 真实原因 | 处置 |
+|---|---|---|
+| 网关域名报 `INVALID_PATH` | 只开了 `/api/health` 一条路由（`tcb service list` 可查），**根路径本来就没有路由** | 补全路径即可，不是故障 |
+| 托管域名报 `404 NoSuchKey` | COS 侧报错，通常是 CDN 边缘/浏览器缓存了「上传完成前」的 404 | `Ctrl+Shift+R` 强刷 或无痕窗口；CDN 几分钟内自动刷新；`curl -H "Cache-Control: no-cache" <url>` 可判定源站是否正常 |
+
+已验证：托管域名 `/`、`//`、`/index.html`、不带尾斜杠四种写法均返回 200。
