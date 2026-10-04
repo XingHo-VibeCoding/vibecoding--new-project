@@ -123,8 +123,44 @@
 
 ---
 
-## 五、变更记录
+## 五、数据模型（Day 16 定稿，建表脚本见 `db/schema.sql`）
+
+> 表结构从本契约的返回形状推导，与前端 `mockData.js` 的 HotItem 字段一字不差。字段名用 snake_case（数据库侧），接口 JSON 保持 camelCase（如 `publishedAt` ↔ `published_at`），云函数层做映射。
+
+### trends — 热搜条目（GET /api/hot 的数据源）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | TEXT PK | 平台名+序号（如 `weibo-1`），与 HotItem.id 同格式 |
+| platform | TEXT CHECK | 6 平台枚举：weibo/zhihu/douyin/baidu/xiaohongshu/bilibili |
+| title | TEXT NOT NULL | 热搜标题 |
+| rank | SMALLINT | 排名（≥1，TOP50） |
+| heat | BIGINT | 原始热度整数 |
+| category | TEXT CHECK | 6 分类枚举：entertainment/society/tech/finance/sports/gaming |
+| url | TEXT | 跳原文外链（可空） |
+| published_at | TIMESTAMPTZ | 抓取/发布时刻，API 层转 ISO 8601 UTC |
+| trend_date | DATE | 所属榜单日期 |
+
+- 唯一约束：`(platform, title, trend_date)` — 同平台同日不重录，Day 17 重复抓取的判重依据。
+- 索引：`(trend_date, platform, rank)` — /api/hot 主查询路径。
+
+### favorites — 收藏（Day 19 favorite 接口的数据源）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | BIGSERIAL PK | 自增 |
+| user_key | TEXT NOT NULL | 匿名用户标识（本课程不登录不建用户表；Day 23+ 有账号体系后再升级） |
+| item_id | TEXT FK → trends(id) | ON DELETE CASCADE，条目删除时收藏级联清理 |
+| created_at | TIMESTAMPTZ | 收藏时间，列表按它倒序（对齐前端头插法） |
+
+- 唯一约束：`(user_key, item_id)` — 幂等收藏的实现基础。
+- 种子脚本：`db/seed.sql`（12 行 trends + 5 行 favorites，可重复执行；**Day 20 上线后禁止执行**）。
+
+---
+
+## 六、变更记录
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-10-01 | v0.1 | Day 15 制定：/api/health 上线实测通过，其余 8 个接口定型待实现 |
+| 2026-10-04 | v0.2 | Day 16 回写：trends / favorites 两表定稿，建表与种子脚本入库 `db/` |
