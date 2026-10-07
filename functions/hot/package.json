@@ -1,0 +1,7 @@
+{
+  "name": "hot",
+  "version": "1.0.0",
+  "description": "GET /api/hot —— 全平台热搜列表（走 CloudBase 数据库 HTTP API，零第三方依赖）",
+  "main": "index.js",
+  "dependencies": {}
+}

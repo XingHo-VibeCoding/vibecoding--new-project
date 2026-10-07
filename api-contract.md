@@ -59,7 +59,7 @@
 
 ## 三、待实现接口（Day 16–20 按此实现，实现一个勾一个）
 
-### GET /api/hot — 全平台热搜列表（Day 17 真实数据）
+### GET /api/hot — 全平台热搜列表 ✅ 已上线（2026-10-07 实测通过）
 
 - **认证**：无（公开数据）
 - **查询参数**：`platforms`（可选，逗号分隔，默认全部 6 个）
@@ -84,6 +84,8 @@
 ```
 
 - **约定**：`heat` 为整数（原始热度）；`category` 枚举 = entertainment / society / tech / finance / sports / gaming。字段与前端现有 `mockData.js` 的 HotItem 结构**一字不差**，Day 17 只换数据源不改前端。
+- **实现说明**：云函数 `hot` 通过 CloudBase HTTP API（PostgREST）读 `trends` 表，取**最新有数据的 trend_date**（不写死"今天"，同步没跑的早晨不空屏）。取数密钥 = 函数环境变量（`CLOUDBASE_API_KEY` 或控制台注入的 `CLOUDBASE_APIKEY`，两个名字都认）。
+- **实测记录**：2026-10-07 公网 200，返回 12 条（6 平台 × 2），`heat` 为整数、字段 camelCase 与契约一致。
 
 ### POST /api/auth/login — 登录（Day 19）
 
@@ -91,10 +93,13 @@
 - **响应 200**：`{ "ok": true, "token": "<jwt>", "expiresAt": "..." }`
 - **响应 401**：`{ "ok": false, "error": { "code": "UNAUTHORIZED", "message": "用户名或密码错误" } }`
 
-### GET /api/favorite — 收藏列表（Day 19）
+### GET /api/favorite — 收藏列表 ✅ 过渡版已上线（2026-10-07；Day 19 换 Bearer token）
 
-- **认证**：需要。返回该用户收藏，按收藏时间倒序（与前端 localStorage 头插法一致）。
+- **认证（当前过渡版）**：`userKey` 走查询参数（`?userKey=...`），Day 19 起改为 `Authorization: Bearer <jwt>`。返回该用户收藏，按收藏时间倒序（与前端 localStorage 头插法一致）。
 - **响应 200**：`{ "ok": true, "items": [ /* HotItem[] */ ] }`
+- **响应 400**（缺 userKey）：`{ "ok": false, "error": { "code": "BAD_REQUEST", "message": "缺少 userKey" } }`
+- **实现说明**：云函数 `favorite` 走 HTTP API 做 `favorites JOIN trends`，密钥取法同 `hot`。
+- **实测记录**：2026-10-07 公网 200（`seed-user-yolo` 返回 4 条倒序）；缺参数返回 400。
 
 ### POST /api/favorite — 添加收藏（Day 19）
 
@@ -164,3 +169,4 @@
 |---|---|---|
 | 2026-10-01 | v0.1 | Day 15 制定：/api/health 上线实测通过，其余 8 个接口定型待实现 |
 | 2026-10-04 | v0.2 | Day 16 回写：trends / favorites 两表定稿，建表与种子脚本入库 `db/` |
+| 2026-10-07 | v0.3 | Day 17：GET /api/hot 上线（读 trends）；GET /api/favorite 过渡版上线（userKey 走查询参数，Day 19 换 token）。云函数取数走 HTTP API + 服务端 API Key（环境变量，不入仓库） |

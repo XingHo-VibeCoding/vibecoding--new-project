@@ -27,6 +27,30 @@
         "type": "function",
         "path": "/api/health"
       }
+    },
+    {
+      "name": "hot",
+      "timeout": 10,
+      "envVariables": {},
+      "runtime": "Nodejs20.19",
+      "installDependency": false,
+      "framework": {
+        "name": "hot",
+        "type": "function",
+        "path": "/api/hot"
+      }
+    },
+    {
+      "name": "favorite",
+      "timeout": 10,
+      "envVariables": {},
+      "runtime": "Nodejs20.19",
+      "installDependency": false,
+      "framework": {
+        "name": "favorite",
+        "type": "function",
+        "path": "/api/favorite"
+      }
     }
   ]
 }
