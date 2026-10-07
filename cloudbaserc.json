@@ -51,6 +51,18 @@
         "type": "function",
         "path": "/api/favorite"
       }
+    },
+    {
+      "name": "sync",
+      "timeout": 30,
+      "envVariables": {},
+      "runtime": "Nodejs20.19",
+      "installDependency": false,
+      "framework": {
+        "name": "sync",
+        "type": "function",
+        "path": "/api/sync"
+      }
     }
   ]
 }

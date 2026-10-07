@@ -16,9 +16,9 @@ DROP TABLE IF EXISTS trends;
 -- 表 1：trends —— 热搜条目（核心表，Day 17 读接口的数据源）
 -- ------------------------------------------------------------
 CREATE TABLE trends (
-    -- id：TEXT。沿用前端 HotItem 的 id 格式（如 'weibo-1'），
-    -- 平台名+序号天然可读且全局唯一，不引入自增主键，
-    -- Day 17 换真实数据源时前端零改动。
+    -- id：TEXT。seed 数据沿用 HotItem 的 'weibo-1' 格式；
+    -- Day 17 真实同步用 '{platform}-{trend_date}-{md5(title)[:8]}'——
+    -- 排名会实时变动，id 不能含 rank，标题 hash 保证同一天同标题幂等。
     id            TEXT PRIMARY KEY,
 
     -- platform：TEXT + CHECK 枚举。固定 6 平台，
@@ -36,9 +36,11 @@ CREATE TABLE trends (
     -- 但留余量更稳，且 JSON 返回时仍是数字、无需转换。
     heat          BIGINT NOT NULL DEFAULT 0,
 
-    -- category：TEXT + CHECK 枚举。6 个分类，与前端 CATEGORIES 一致。
+    -- category：TEXT + CHECK 枚举。与前端 CATEGORIES 一致的 6 个分类，
+    -- 另加 'general'（Day 17 真实同步专用）：微博/B站/抖音的公开接口
+    -- 不提供分类字段，同步数据统一标 general，前端配色 Day 18 跟上。
     category      TEXT NOT NULL
-                  CHECK (category IN ('entertainment','society','tech','finance','sports','gaming')),
+                  CHECK (category IN ('entertainment','society','tech','finance','sports','gaming','general')),
 
     -- url：跳原文的外链，MVP 阶段允许为空。
     url           TEXT,

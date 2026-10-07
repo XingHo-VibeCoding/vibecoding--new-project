@@ -1,0 +1,6 @@
+{
+  "name": "sync",
+  "version": "1.0.0",
+  "description": "trend-wave 热搜同步：拉取微博/B站/抖音公开榜单并 upsert 进 trends 表",
+  "main": "index.js"
+}

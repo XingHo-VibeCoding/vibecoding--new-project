@@ -83,7 +83,7 @@
 }
 ```
 
-- **约定**：`heat` 为整数（原始热度）；`category` 枚举 = entertainment / society / tech / finance / sports / gaming。字段与前端现有 `mockData.js` 的 HotItem 结构**一字不差**，Day 17 只换数据源不改前端。
+- **约定**：`heat` 为整数（原始热度）；`category` 枚举 = entertainment / society / tech / finance / sports / gaming / **general**（general 为 Day 17 真实同步数据专用，三个公开接口不提供分类；前端配色 Day 18 跟上）。字段与前端现有 `mockData.js` 的 HotItem 结构**一字不差**，Day 17 只换数据源不改前端。
 - **实现说明**：云函数 `hot` 通过 CloudBase HTTP API（PostgREST）读 `trends` 表，取**最新有数据的 trend_date**（不写死"今天"，同步没跑的早晨不空屏）。取数密钥 = 函数环境变量（`CLOUDBASE_API_KEY` 或控制台注入的 `CLOUDBASE_APIKEY`，两个名字都认）。
 - **实测记录**：2026-10-07 公网 200，返回 12 条（6 平台 × 2），`heat` 为整数、字段 camelCase 与契约一致。
 
@@ -120,6 +120,28 @@
 - **校验**：数组、1–3 个、值在 6 平台枚举内，否则 400。
 - **响应 200**：`{ "ok": true }`
 
+### POST /api/sync — 热搜同步（Day 17 板块②）
+
+- **用途**：拉取微博 / B站 / 抖音三个公开榜单（附录 F 指定来源），upsert 进 `trends` 表。手动触发；日后的定时任务复用同一函数。
+- **鉴权（当前过渡版）**：可选。环境变量 `SYNC_TOKEN` 配置了才校验（请求头 `x-sync-token` 相等才执行，否则 401）；未配置则放行——被恶意触发的最坏结果是幂等重复写入。
+- **请求**：无 body 要求。
+- **响应 200**（至少一个平台成功）：
+
+```json
+{
+  "ok": true,
+  "date": "2026-10-07",
+  "platforms": ["weibo: 30 条", "bilibili: 30 条", "douyin: 失败 — 抖音返回 200 但列表为空，通常是请求头缺少 Referer"]
+}
+```
+
+- **响应 502**（三平台全部失败）：`{ "ok": false, "error": { "code": "UPSTREAM", "message": "三个平台全部抓取失败：微博（…）；B站（…）；抖音（…）" } }`
+- **实现约定**：
+  - 每平台取前 30 条；三平台并行，单平台失败不影响其他；
+  - `trend_date` 按**北京时间**（UTC+8）计算，避免云函数 UTC 时区在 0–8 点把当天算成前一天；
+  - 写入用 PostgREST upsert（`on_conflict=platform,title,trend_date` + `Prefer: resolution=merge-duplicates`），重复执行不产生重复行；
+  - 同步数据 `category` 固定 `'general'`（三个公开接口不提供分类）；`id` = `{platform}-{trend_date}-{md5(title) 前 8 位}`（不含 rank——排名会变，id 必须稳定，`favorites` 外键锚定它）。
+
 ---
 
 ## 四、跨域（Day 20 统一处理）
@@ -141,7 +163,7 @@
 | title | TEXT NOT NULL | 热搜标题 |
 | rank | SMALLINT | 排名（≥1，TOP50） |
 | heat | BIGINT | 原始热度整数 |
-| category | TEXT CHECK | 6 分类枚举：entertainment/society/tech/finance/sports/gaming |
+| category | TEXT CHECK | 7 分类枚举：entertainment/society/tech/finance/sports/gaming/general（general 为 Day 17 同步数据专用） |
 | url | TEXT | 跳原文外链（可空） |
 | published_at | TIMESTAMPTZ | 抓取/发布时刻，API 层转 ISO 8601 UTC |
 | trend_date | DATE | 所属榜单日期 |
@@ -170,3 +192,4 @@
 | 2026-10-01 | v0.1 | Day 15 制定：/api/health 上线实测通过，其余 8 个接口定型待实现 |
 | 2026-10-04 | v0.2 | Day 16 回写：trends / favorites 两表定稿，建表与种子脚本入库 `db/` |
 | 2026-10-07 | v0.3 | Day 17：GET /api/hot 上线（读 trends）；GET /api/favorite 过渡版上线（userKey 走查询参数，Day 19 换 token）。云函数取数走 HTTP API + 服务端 API Key（环境变量，不入仓库） |
+| 2026-10-07 | v0.4 | Day 17 板块②：新增 POST /api/sync（微博/B站/抖音公开榜单同步，幂等 upsert）；category 枚举新增 general（真库已 ALTER，schema.sql 同步）；同步数据 id 改为 platform-date-标题hash 格式 |
