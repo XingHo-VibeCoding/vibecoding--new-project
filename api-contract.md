@@ -101,10 +101,15 @@
 - **实现说明**：云函数 `favorite` 走 HTTP API 做 `favorites JOIN trends`，密钥取法同 `hot`。
 - **实测记录**：2026-10-07 公网 200（`seed-user-yolo` 返回 4 条倒序）；缺参数返回 400。
 
-### POST /api/favorite — 添加收藏（Day 19）
+### POST /api/favorite — 添加收藏（Day 18 实现上线）
 
-- **请求**：`{ "itemId": "weibo-1" }`；**响应 200**：`{ "ok": true }`
-- **重复添加**：幂等，仍返回 200。
+- **认证（当前过渡版）**：`userKey` 放请求 body（与 GET 的查询参数过渡版同源，Day 19 起改为 `Authorization: Bearer <jwt>`）。
+- **请求**：`{ "userKey": "seed-user-yolo", "itemId": "weibo-2026-10-08-76363973" }`
+- **校验（400 BAD_REQUEST，中文说明缺了什么）**：
+  - `userKey` / `itemId` 必填、非空字符串，超长拒绝（userKey ≤ 64 字符、itemId ≤ 128 字符）；
+  - `itemId` 必须真实存在于 `trends` 表（防外键报错裸奔到用户面前，返回「该热搜不存在或已下榜」）。
+- **防重复（409 DUPLICATE）**：同一 `userKey + itemId` 已在收藏中 → 返回 `{ok:false, error:{code:"DUPLICATE", message:"该热搜已在收藏中"}}`，数据库行数不增。（Day 18 修订：原 v0.4 定的「幂等 200」改为明确拒绝，对齐手册 Day 18 完成标准——重复可被感知，错误信息可读。）
+- **响应 200**：`{ "ok": true }`
 
 ### DELETE /api/favorite/:itemId — 取消收藏（Day 19）
 
@@ -193,3 +198,4 @@
 | 2026-10-04 | v0.2 | Day 16 回写：trends / favorites 两表定稿，建表与种子脚本入库 `db/` |
 | 2026-10-07 | v0.3 | Day 17：GET /api/hot 上线（读 trends）；GET /api/favorite 过渡版上线（userKey 走查询参数，Day 19 换 token）。云函数取数走 HTTP API + 服务端 API Key（环境变量，不入仓库） |
 | 2026-10-07 | v0.4 | Day 17 板块②：新增 POST /api/sync（微博/B站/抖音公开榜单同步，幂等 upsert）；category 枚举新增 general（真库已 ALTER，schema.sql 同步）；同步数据 id 改为 platform-date-标题hash 格式 |
+| 2026-10-08 | v0.5 | Day 18：POST /api/favorite 定稿并上线——重复收藏由「幂等 200」改为 409 明确拒绝（对齐手册 Day 18 完成标准），补齐 userKey/itemId 校验与 itemId 存在性检查 |
