@@ -2,12 +2,15 @@
 // 契约：api-contract.md「三、GET /api/hot」
 // 形状：成功 { ok: true, items: [HotItem] }；失败 { ok: false, error: { code, message } }
 //
+// Day 19 重构：所有 SQL 抽到 ./repositories/trendsRepository.js，本文件零 SQL。
+//
 // 【为什么走 HTTP API 而不是 pg 直连】（Day 17 实测结论）
 // 免费体验版是共享集群：控制台「网络配置」内网地址为空，官方社区确认
 // 「直连能力等待后续功能更新后提供，需标准版 + VPC 内网互联」。
 // 所以云函数改用 CloudBase 数据库 HTTP API（PostgREST）取数，契约与前端零改动。
 
-const { rest, apiConfigured } = require('./rest')
+const { apiConfigured } = require('./rest')
+const trendsRepository = require('./repositories/trendsRepository')
 
 const ALLOWED_PLATFORMS = ['weibo', 'zhihu', 'douyin', 'baidu', 'xiaohongshu', 'bilibili']
 
@@ -23,21 +26,6 @@ function respond(statusCode, body) {
       'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
     },
     body: JSON.stringify(body),
-  }
-}
-
-// 数据库行（snake_case）→ 契约 HotItem（camelCase）
-// BIGINT 这里防御性 Number()；timestamptz 字符串统一转 ISO 8601 UTC
-function toHotItem(row) {
-  return {
-    id: row.id,
-    platform: row.platform,
-    title: row.title,
-    rank: Number(row.rank),
-    heat: Number(row.heat),
-    category: row.category,
-    url: row.url,
-    publishedAt: new Date(row.published_at).toISOString(),
   }
 }
 
@@ -71,23 +59,12 @@ exports.main = async (event) => {
   }
 
   try {
-    // 1) 库里最新有数据的榜单日期（不写死今天：同步任务没跑的早晨页面也不空屏）
-    const latestRows = await rest('/v1/rdb/rest/trends?select=trend_date&order=trend_date.desc&limit=1')
-    const latestDate = Array.isArray(latestRows) && latestRows[0] ? latestRows[0].trend_date : null
+    const latestDate = await trendsRepository.findLatestTrendDate()
     if (!latestDate) {
       return respond(200, { ok: true, items: [] })
     }
-
-    // 2) 该日期 + 所选平台的条目，按平台、排名排序
-    const query = [
-      'select=id,platform,title,rank,heat,category,url,published_at',
-      `trend_date=eq.${latestDate}`,
-      `platform=in.(${platforms.join(',')})`,
-      'order=platform.asc,rank.asc',
-    ].join('&')
-
-    const rows = await rest(`/v1/rdb/rest/trends?${query}`)
-    return respond(200, { ok: true, items: (rows || []).map(toHotItem) })
+    const items = await trendsRepository.findByDateAndPlatforms(latestDate, platforms)
+    return respond(200, { ok: true, items })
   } catch (err) {
     console.error('[hot] 查询失败：', err && err.message, JSON.stringify((err && err.detail) || null))
     return respond(500, {

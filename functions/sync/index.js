@@ -17,7 +17,8 @@
 //   （请求头 x-sync-token 与之相等才执行）；没配就放行——课程 MVP 阶段的取舍，
 //   被恶意触发的最坏结果只是重复幂等写入。
 const crypto = require('crypto')
-const { rest, apiConfigured } = require('./rest')
+const { apiConfigured } = require('./rest')
+const trendsRepository = require('./repositories/trendsRepository')
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -163,13 +164,7 @@ exports.main = async function (event) {
       const items = await fetcher()
       const rows = items.map((it) => toRow(platform, it, trendDate, fetchedAt))
       if (rows.length > 0) {
-        // upsert：等价于 ON CONFLICT (platform,title,trend_date) DO UPDATE，
-        // PostgREST 天然按 JSON 参数化，无字符串拼接（附录 F 要求 3、4）
-        await rest('/v1/rdb/rest/trends?on_conflict=platform,title,trend_date', {
-          method: 'POST',
-          headers: { Prefer: 'resolution=merge-duplicates' },
-          body: JSON.stringify(rows),
-        })
+        await trendsRepository.upsertMany(rows)
       }
       return { platform, count: rows.length, error: null }
     } catch (e) {

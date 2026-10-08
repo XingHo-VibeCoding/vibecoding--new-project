@@ -34,3 +34,6 @@ yarn-error.log*
 # 工具缓存
 .eslintcache
 .parcel-cache/
+# Day 19 重构回归基线（不入仓）
+.refactor-baseline/
+.refactor-after/
