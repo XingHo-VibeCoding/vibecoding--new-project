@@ -25,7 +25,7 @@ CREATE TABLE trends (
     rank          SMALLINT NOT NULL CHECK (rank >= 1),
     heat          BIGINT NOT NULL DEFAULT 0,
     category      TEXT NOT NULL
-                  CHECK (category IN ('entertainment','society','tech','finance','sports','gaming')),
+                  CHECK (category IN ('entertainment','society','tech','finance','sports','gaming','general')),
     url           TEXT,
     published_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     trend_date    DATE NOT NULL DEFAULT CURRENT_DATE,

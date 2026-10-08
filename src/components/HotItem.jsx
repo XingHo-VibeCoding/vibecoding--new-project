@@ -12,7 +12,9 @@ const RANK_STYLE = {
 }
 
 export default function HotItem({ item, now, isFavorited = false, onToggleFavorite }) {
-  const cat = CATEGORY_MAP[item.category]
+  // Day 20 加：容错——真实数据若出现未知分类（不在 CATEGORY_MAP），
+  // 回落到「综合」样式而不是直接炸。HotItem 在列表每行都要渲染，单点失败会整页崩。
+  const cat = CATEGORY_MAP[item.category] || CATEGORY_MAP.general
   const rankStyle = RANK_STYLE[item.rank] || { bg: 'bg-slate-700/60', text: 'text-slate-400', glow: '' }
 
   return (

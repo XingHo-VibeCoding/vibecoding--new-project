@@ -19,6 +19,9 @@ export const CATEGORIES = [
   { id: 'finance',       name: '财经', color: '#eab308', bg: 'bg-yellow-500/15',  text: 'text-yellow-300',  border: 'border-yellow-500/40' },
   { id: 'sports',        name: '体育', color: '#a855f7', bg: 'bg-purple-500/15',  text: 'text-purple-300',  border: 'border-purple-500/40' },
   { id: 'gaming',        name: '游戏', color: '#14b8a6', bg: 'bg-teal-500/15',    text: 'text-teal-300',    border: 'border-teal-500/40' },
+  // Day 17 加：附录 F 真实数据源不提供分类，全部标 'general'，
+  // 前面必须有这一项，否则 HotItem 渲染 .bg 会抛 Cannot read properties of undefined
+  { id: 'general',       name: '综合', color: '#94a3b8', bg: 'bg-slate-500/15',   text: 'text-slate-300',   border: 'border-slate-500/40' },
 ]
 
 export const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]))
