@@ -96,53 +96,6 @@ const TITLES = {
   ],
 }
 
-// 固定时间锚点（页面渲染时基于它生成"几分钟前"）
-// 注意：这个锚点要在页面打开瞬间生成一次，而不是每次渲染都变
-// 所以它由调用方传入，mock 模块只做"过去几分钟"的数据
-export function generateMockData(anchorTime = Date.now()) {
-  const items = []
-
-  PLATFORMS.forEach(platform => {
-    const weights = PLATFORM_CATEGORY_WEIGHTS[platform.id]
-    // 构造权重桶
-    const bucket = []
-    Object.entries(weights).forEach(([cat, w]) => {
-      for (let i = 0; i < w; i++) bucket.push(cat)
-    })
-
-    // 50 条
-    for (let rank = 1; rank <= 50; rank++) {
-      // 分类：用「4 倍扩展桶 + rank×5 + 平台哈希」做确定性均匀抽样
-      // 这样 TOP3 不会聚在同一类，且各平台调性仍由权重分布保证
-      const megaBucket = [...bucket, ...bucket, ...bucket, ...bucket]
-      const platformHash = platform.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-      const cat = megaBucket[(rank * 5 + platformHash) % megaBucket.length]
-      // 标题池：取模取一条
-      const pool = TITLES[cat]
-      const title = pool[(rank * 7 + platform.id.charCodeAt(0)) % pool.length]
-      // 热度：rank 1 最高（1.2 亿），rank 50 最低（150 万），按幂律衰减
-      const heat = Math.round(120_000_000 / Math.pow(rank, 0.85))
-      // 时间：rank 1 最新（5 分钟内），rank 50 较早（2 小时内）
-      const minutesAgo = 5 + Math.round(rank * 2.5)
-      const publishedAt = anchorTime - minutesAgo * 60 * 1000
-
-      items.push({
-        id: `${platform.id}-${rank}`,
-        platform: platform.id,
-        rank,
-        title,
-        heat,
-        category: cat,
-        publishedAt,
-        // 外链：MVP 阶段点开跳原文（PRD F4 简化方案，Day 13 再做详情页）
-        url: `https://www.${platform.id}.com/search?q=${encodeURIComponent(title)}`,
-      })
-    }
-  })
-
-  return items
-}
-
 // 工具：把数字格式化成"1.2亿"/"856万"
 export function formatHeat(n) {
   if (n >= 100_000_000) return (n / 100_000_000).toFixed(1).replace(/\.0$/, '') + '亿'

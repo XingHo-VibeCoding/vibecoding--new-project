@@ -1,26 +1,26 @@
 // Day 13｜V3 我的收藏（PRD V3）：已收藏条目列表，按收藏时间倒序
-// 复用 HotItem（点条目进详情、星号取消收藏，和列表页同一套交互）
-// 数据来自 Day 11 的 favorites（localStorage），不加新数据
+// Day 20：favorites 已是 HotItem[]（来自云函数 /api/favorite），不再用 items 拼接
+// 头插法天然倒序，无需额外排序
 import HotItem from './HotItem'
 import { DATA_STATUS } from '../hooks/useHotData'
 
-export default function FavoritesPage({ status, items, favorites = [], onToggleFavorite, now }) {
-  // favorites 数组本身就是「新收藏在前」（toggleFavorite 用的是头插法），天然倒序
-  const favItems = favorites.map((id) => items.find((i) => i.id === id)).filter(Boolean)
+export default function FavoritesPage({ status, favorites = [], onToggleFavorite, now }) {
+  // 收藏列表：favorites 本身就是头插法排列，新收藏在前
+  const favItems = favorites
 
   return (
     <section className="mx-auto max-w-2xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">我的收藏</h2>
         <p className="mt-2 text-sm text-slate-400">
-          {favorites.length > 0
-            ? `共 ${favItems.length} 条，按收藏时间倒序。保存在本浏览器，登录后可跨设备同步（Day 19 接）。`
-            : '收藏保存在本浏览器；登录后可跨设备同步（Day 19 接）。'}
+          {favItems.length > 0
+            ? `共 ${favItems.length} 条，按收藏时间倒序。保存在云端，跨设备同步。`
+            : '收藏保存在云端，跨设备同步。'}
         </p>
       </div>
 
-      {/* 加载中：数据没到之前不知道收藏的条目长什么样，不能直接判空 */}
-      {status === DATA_STATUS.LOADING && (
+      {/* 加载中：云端数据没到之前不能直接判空 */}
+      {status === DATA_STATUS.LOADING && favorites.length === 0 && (
         <div
           role="status"
           aria-busy="true"
@@ -72,7 +72,7 @@ export default function FavoritesPage({ status, items, favorites = [], onToggleF
               <HotItem
                 item={item}
                 now={now}
-                isFavorited={favorites.includes(item.id)}
+                isFavorited
                 onToggleFavorite={onToggleFavorite}
               />
             </li>

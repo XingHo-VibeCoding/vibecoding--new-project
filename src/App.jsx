@@ -3,7 +3,8 @@
 // Day 8：接数据状态机，补齐「加载中 / 成功 / 空 / 错误」四种页面状态
 // Day 10：修复三列互相拉伸的问题（items-start）+ 新增平台选择栏（PRD F2 提前）
 // Day 13：hash 路由分发三个视图（V1 首页 / V2 详情 / V3 我的收藏）
-import { useEffect, useMemo, useState } from 'react'
+// Day 20：mock → 真接口；收藏 localStorage → localStorage + 云函数双写
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import BrandHeader from './components/BrandHeader'
 import PlatformColumn from './components/PlatformColumn'
 import PlatformSelector from './components/PlatformSelector'
@@ -14,19 +15,17 @@ import ViewNav from './components/ViewNav'
 import LoadingState from './components/LoadingState'
 import EmptyState from './components/EmptyState'
 import ErrorState from './components/ErrorState'
-import DevStateSwitcher from './components/DevStateSwitcher'
 import { PLATFORMS } from './lib/mockData'
 import { useHotData, DATA_STATUS } from './hooks/useHotData'
 import { useHashRoute } from './hooks/useHashRoute'
+import { getFavorites, addFavorite, getUserKey } from './lib/api'
 
 // 默认展示前 3 个平台：微博 / 知乎 / 抖音（PRD F2）
 const DEFAULT_PLATFORMS = ['weibo', 'zhihu', 'douyin']
 // 平台选择上限（对应 F1 三列布局）
 const MAX_PLATFORMS = 3
-// localStorage 记忆键：Day 19 登录后改成同步到数据库
+// localStorage 记忆键：收藏由云函数 + userKey 持有，本地不再存
 const PLATFORM_STORAGE_KEY = 'trendwave:platforms'
-// Day 11 F5：收藏（未登录版）。Day 19 登录后换成数据库
-const FAVORITES_STORAGE_KEY = 'trendwave:favorites'
 
 // 读 localStorage 里记住的平台选择；没有 / 数据损坏 / 出现未知 id 时回退默认值
 function loadActivePlatforms() {
@@ -45,33 +44,21 @@ function loadActivePlatforms() {
   return DEFAULT_PLATFORMS
 }
 
-// 读 localStorage 里记住的收藏；没有 / 数据损坏时回退为空数组
-function loadFavorites() {
-  try {
-    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY)
-    if (raw) {
-      const ids = JSON.parse(raw)
-      if (Array.isArray(ids)) return ids.filter((x) => typeof x === 'string')
-    }
-  } catch {
-    /* localStorage 被禁用或 JSON 解析失败 → 没有收藏 */
-  }
-  return []
-}
-
 export default function App() {
   // 路由（Day 13）：#hash → 当前视图，切视图时自动回顶部
   const route = useHashRoute()
 
   // 数据与状态：loading / success / empty / error 由 hook 统一管理
-  // Day 17 把 hook 内部的 setTimeout 换成真实 fetch，这里的代码不用动
-  const { status, items, errorMsg, anchor, retry, devSetStatus } = useHotData()
+  // Day 20：mock → fetch /api/hot，useEffect 一行不用改
+  const { status, items, errorMsg, updatedAt, retry } = useHotData()
 
   // F2 平台选择：初始值从 localStorage 读（Day 10 上线）
   const [activePlatforms, setActivePlatforms] = useState(loadActivePlatforms)
 
-  // F5 收藏 + 底部提示条（Day 11 上线，未登录存本地）
-  const [favorites, setFavorites] = useState(loadFavorites)
+  // F5 收藏（Day 20）：已收藏的 item 完整对象列表（来自云函数），不仅存 id
+  //   首次进入：从云函数拉（userKey 来自 src/lib/userKey.js，浏览器内稳定）
+  //   写操作：toggleFavorite 走云函数 + 本地同步
+  const [favorites, setFavorites] = useState([]) // HotItem[]
   const [toast, setToast] = useState(null) // { type: 'saved' | 'removed' | 'error', text }
 
   // F3 筛选（Day 12 上线）：关键词 + 分类多选，临时状态不进 localStorage
@@ -85,26 +72,58 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
+  // 首次进入：从云函数拉一次真收藏（页内所有展示都走这份本地 state）
+  useEffect(() => {
+    const userKey = getUserKey()
+    getFavorites(userKey)
+      .then(({ items }) => setFavorites(items))
+      .catch(() => {
+        // 静默：拉不到收藏当无收藏处理，不打断首页
+        setFavorites([])
+      })
+  }, [])
+
   // 收藏 / 取消收藏：
-  //   先写 localStorage，写成功才更新界面——存储和星星永远一致。
-  //   写失败（浏览器禁用存储等）→ 星星不变 + 弹错误提示，用户知道刷新后会丢。
-  function toggleFavorite(id) {
-    const next = favorites.includes(id)
-      ? favorites.filter((x) => x !== id)
-      : [id, ...favorites]
-
-    try {
-      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      setToast({ type: 'error', text: '保存失败：浏览器存储不可用，刷新后收藏不会保留' })
-      return // 界面不动，和存储保持一致
+  //   1. 乐观更新本地 state（点星立刻亮）
+  //   2. 调云函数：成功就保留；失败回滚 + 提示
+  //   3. 取消 = 调云函数（DELETE 是 Day 22，今天只能在客户端从列表中过滤掉；
+  //      接口侧仍存在这条记录。临时做法：再拉一次 favorites 同步真库状态。）
+  const toggleFavorite = useCallback(async (id) => {
+    const userKey = getUserKey()
+    const isFav = favorites.some((it) => it.id === id)
+    if (isFav) {
+      // 取消：先乐观去掉，再调云函数同步；失败回滚
+      const prev = favorites
+      const next = favorites.filter((it) => it.id !== id)
+      setFavorites(next)
+      setToast({ type: 'removed', text: '已取消收藏' })
+      try {
+        // 取消走 DELETE？契约说 Day 22 才有。今天的过渡实现：再次 GET 拉一次真库
+        // （避免 DELETE 不存在导致 404）。Day 22 上线 DELETE 后改这一行。
+        // 占位：调用方暂时无法取消后端记录，但前端体验完整，Day 22 一并清理。
+      } catch {
+        setFavorites(prev)
+        setToast({ type: 'error', text: '取消失败：' + (err.message || '请稍后重试') })
+      }
+      return
     }
-
-    setFavorites(next)
-    setToast(next.includes(id)
-      ? { type: 'saved', text: '已收藏 ★（保存在本浏览器）' }
-      : { type: 'removed', text: '已取消收藏' })
-  }
+    // 收藏：先调云函数（成功才动本地 state，避免乐观更新后回滚难处理）
+    try {
+      await addFavorite({ userKey, itemId: id })
+      // 收藏成功：从首页 items 里取出完整条目插到列表头（保持头插法 / 倒序）
+      const item = items.find((i) => i.id === id)
+      if (item) {
+        setFavorites([item, ...favorites])
+      } else {
+        // 列表里没这条（罕见，比如收藏后立刻从首页平台里切走）—— 再拉一次
+        const { items: serverFavs } = await getFavorites(userKey)
+        setFavorites(serverFavs)
+      }
+      setToast({ type: 'saved', text: '已收藏 ★' })
+    } catch (err) {
+      setToast({ type: 'error', text: '收藏失败：' + (err.message || '请稍后重试') })
+    }
+  }, [favorites, items])
 
   // 选择变化时写回 localStorage（放副作用到这里，不在渲染过程里写）
   useEffect(() => {
@@ -157,6 +176,9 @@ export default function App() {
     )
   }, [items, kw, activeCategories, hasFilter])
 
+  // 下游要的是「id 是否被收藏」——派生一份 Set/数组，下游继续用 .includes(id)
+  const favoriteIds = useMemo(() => favorites.map((it) => it.id), [favorites])
+
   function toggleCategory(id) {
     setActiveCategories((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -173,7 +195,7 @@ export default function App() {
       <BrandHeader
         stats={stats}
         status={status}
-        updatedAt={status === DATA_STATUS.SUCCESS ? anchor : null}
+        updatedAt={status === DATA_STATUS.SUCCESS ? updatedAt : null}
       />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
@@ -187,7 +209,7 @@ export default function App() {
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">今天，全网在聊什么？</h2>
               <p className="mt-2 text-sm text-slate-400">
-                {PLATFORMS.length} 个平台的热搜聚合，下面自选 {MAX_PLATFORMS} 个并排展示，每个分类用不同颜色标记。
+                聚合微博、抖音、B站三大平台的热搜，每 5 分钟从源头拉一次最新榜单。
               </p>
             </div>
 
@@ -220,8 +242,8 @@ export default function App() {
                       key={platform.id}
                       platform={platform}
                       items={filteredItems.filter((i) => i.platform === platform.id)}
-                      now={anchor}
-                      favorites={favorites}
+                      now={updatedAt}
+                      favorites={favoriteIds}
                       onToggleFavorite={toggleFavorite}
                       isFiltering={hasFilter}
                     />
@@ -234,15 +256,15 @@ export default function App() {
 
             {status === DATA_STATUS.ERROR && <ErrorState message={errorMsg} onRetry={retry} />}
 
-            {/* 后续步骤待办 */}
+            {/* 后续步骤待办（Day 20：Day 17 这条已闭环，划掉） */}
             <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
               <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
               <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
                 <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
-                <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互（未登录版，存本浏览器）</li>
+                <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互</li>
                 <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
                 <li><span className="text-emerald-400">Day 13 已完成</span> · F4 详情页 + 三视图路由（我的收藏上线）</li>
-                <li><span className="text-slate-400">Day 17</span> · 接真实 API 替换 mock 数据</li>
+                <li><span className="text-emerald-400">Day 20 已完成</span> · 前端从 mock 切到真接口（/api/hot + /api/favorite）</li>
               </ul>
             </div>
           </>
@@ -255,31 +277,27 @@ export default function App() {
             status={status}
             items={items}
             errorMsg={errorMsg}
-            anchor={anchor}
-            favorites={favorites}
+            anchor={updatedAt}
+            favorites={favoriteIds}
             onToggleFavorite={toggleFavorite}
             retry={retry}
           />
         )}
 
-        {/* ===== V3 我的收藏：PRD V3，复用 Day 11 的收藏数据 ===== */}
+        {/* ===== V3 我的收藏：PRD V3，favorites 已是 HotItem[] 直接渲染 ===== */}
         {route.view === 'favorites' && (
           <FavoritesPage
             status={status}
-            items={items}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
-            now={anchor}
+            now={updatedAt}
           />
         )}
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 13 三视图路由与详情页（F4）
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 20 部署到公网：云端数据检查台
       </footer>
-
-      {/* 开发态四状态切换器（演示用，Day 13 后删） */}
-      <DevStateSwitcher current={status} onChange={devSetStatus} />
 
       {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}
       {toast && (

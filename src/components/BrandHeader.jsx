@@ -1,4 +1,5 @@
 // 品牌头部 + 全局指标卡（Day 7 第 3 步 F1 建立；Day 8 追加「更新时间 + 状态胶囊」）
+// Day 20：「更新节奏：每 5 分钟」改为显示「最后更新」真实时间（余力加练）
 import { PLATFORMS, formatHeat, formatClock } from '../lib/mockData'
 import { DATA_STATUS } from '../hooks/useHotData'
 
@@ -76,7 +77,7 @@ export default function BrandHeader({ stats, status, updatedAt }) {
           />
           <MetricCard
             label="更新节奏"
-            value="每 5 分钟"
+            value={updatedAt ? `每 5 分钟（${formatClock(updatedAt)}）` : '每 5 分钟'}
             accent="blue"
             hint="实时感知全网动态"
           />
@@ -87,11 +88,11 @@ export default function BrandHeader({ stats, status, updatedAt }) {
       <div className="border-t border-slate-800/60 bg-slate-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
           <span>
-            第 2 周 · <span className="text-orange-400">Day 10</span>
-            <span className="text-slate-400">／28</span> 　平台选择与三列布局修复
+            第 3 周 · <span className="text-orange-400">Day 20</span>
+            <span className="text-slate-400">／28</span> 　 前端切换真实接口 + 公网部署
           </span>
           <span>
-            {PLATFORMS.length} 个平台 · 每平台 50 条 · 共 {stats.platformCount * 50} 条
+            {PLATFORMS.length} 个平台 · 共 {stats.total} 条
           </span>
         </div>
       </div>
