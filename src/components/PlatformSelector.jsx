@@ -22,19 +22,26 @@ export default function PlatformSelector({ active, onToggle, max = 3 }) {
         {PLATFORMS.map((p) => {
           const isActive = active.includes(p.id)
           const isLast = isActive && active.length === 1
+          // Day 21：数据源还没接上的平台（知乎 / 小红书）加「筹备中」标记，
+          // 让用户提前知道选中它会是空列，而不是点开之后怀疑页面坏了
+          const isPending = p.ready === false
           return (
             <button
               key={p.id}
               onClick={() => onToggle(p.id)}
               aria-pressed={isActive}
               title={
-                isLast
-                  ? '至少保留 1 个平台，不能取消'
-                  : isActive
-                    ? `收起 ${p.name} 榜单`
-                    : `展示 ${p.name} 榜单`
+                isPending
+                  ? `${p.name}数据源筹备中（${p.pending}），选中后这一列会是空的`
+                  : isLast
+                    ? '至少保留 1 个平台，不能取消'
+                    : isActive
+                      ? `收起 ${p.name} 榜单`
+                      : `展示 ${p.name} 榜单`
               }
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60 ${
+                isPending ? 'border-dashed' : ''
+              } ${
                 isActive
                   ? 'bg-slate-800/60 text-slate-100'
                   : 'border-slate-700/70 bg-transparent text-slate-400 hover:border-slate-500/80 hover:text-slate-200'
@@ -53,6 +60,11 @@ export default function PlatformSelector({ active, onToggle, max = 3 }) {
                 style={{ backgroundColor: p.color }}
               />
               {p.name}
+              {isPending && (
+                <span className="rounded border border-slate-600/70 px-1 text-[10px] leading-4 text-slate-400">
+                  筹备中
+                </span>
+              )}
             </button>
           )
         })}
@@ -60,6 +72,7 @@ export default function PlatformSelector({ active, onToggle, max = 3 }) {
 
       <p className="mt-3 text-xs text-slate-400">
         最多同时展示 {max} 个平台：再选一个会替换掉最早选中的；至少保留 1 个。你的选择会被记住，下次进来不用重选。
+        标「筹备中」的平台接口需要登录态或没有公开接口，暂未接入真实数据。
       </p>
     </section>
   )

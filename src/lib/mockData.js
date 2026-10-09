@@ -3,14 +3,21 @@
 // 6 平台 × TOP50 = 300 条热搜
 // 字段严格对齐 PRD 三.6 数据模型 + TECH_DESIGN 三 数据模型
 
+// Day 21：加 ready 标记——区分「已接入真实数据源」与「数据源筹备中」。
+//   知乎接口要登录态（实测 401 身份未经过验证）、小红书无公开接口，
+//   云端拿不到稳定凭据，所以这两个平台暂时没有真数据。
+//   前端据此给出「筹备中」说明，而不是留一个看起来像坏掉的空列。
 export const PLATFORMS = [
-  { id: 'weibo',    name: '微博',   color: '#ef4444', dot: 'bg-red-500' },
-  { id: 'zhihu',    name: '知乎',   color: '#3b82f6', dot: 'bg-blue-500' },
-  { id: 'douyin',   name: '抖音',   color: '#f97316', dot: 'bg-orange-500' },
-  { id: 'baidu',    name: '百度',   color: '#22c55e', dot: 'bg-green-500' },
-  { id: 'xiaohongshu', name: '小红书', color: '#ec4899', dot: 'bg-pink-500' },
-  { id: 'bilibili', name: 'B站',   color: '#a855f7', dot: 'bg-purple-500' },
+  { id: 'weibo',    name: '微博',   color: '#ef4444', dot: 'bg-red-500', ready: true },
+  { id: 'zhihu',    name: '知乎',   color: '#3b82f6', dot: 'bg-blue-500', ready: false, pending: '接口需登录态' },
+  { id: 'douyin',   name: '抖音',   color: '#f97316', dot: 'bg-orange-500', ready: true },
+  { id: 'baidu',    name: '百度',   color: '#22c55e', dot: 'bg-green-500', ready: true },
+  { id: 'xiaohongshu', name: '小红书', color: '#ec4899', dot: 'bg-pink-500', ready: false, pending: '无公开接口' },
+  { id: 'bilibili', name: 'B站',   color: '#a855f7', dot: 'bg-purple-500', ready: true },
 ]
+
+// 已接入真实数据源的平台 id（Day 21：微博 / 抖音 / 百度 / B站）
+export const READY_PLATFORMS = PLATFORMS.filter((p) => p.ready).map((p) => p.id)
 
 export const CATEGORIES = [
   { id: 'entertainment', name: '娱乐', color: '#f59e0b', bg: 'bg-amber-500/15',   text: 'text-amber-300',   border: 'border-amber-500/40' },

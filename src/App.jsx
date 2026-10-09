@@ -15,13 +15,15 @@ import ViewNav from './components/ViewNav'
 import LoadingState from './components/LoadingState'
 import EmptyState from './components/EmptyState'
 import ErrorState from './components/ErrorState'
-import { PLATFORMS } from './lib/mockData'
+import { PLATFORMS, READY_PLATFORMS } from './lib/mockData'
 import { useHotData, DATA_STATUS } from './hooks/useHotData'
 import { useHashRoute } from './hooks/useHashRoute'
 import { getFavorites, addFavorite, getUserKey } from './lib/api'
 
-// 默认展示前 3 个平台：微博 / 知乎 / 抖音（PRD F2）
-const DEFAULT_PLATFORMS = ['weibo', 'zhihu', 'douyin']
+// 默认展示前 3 个平台：微博 / 抖音 / B站（PRD F2）
+// Day 21：原默认值是 ['weibo','zhihu','douyin']，但知乎的数据源需要登录态、暂未接入，
+// 新用户一进首页就会看到一个空列。默认值改为三个有真实数据的平台。
+const DEFAULT_PLATFORMS = ['weibo', 'douyin', 'bilibili']
 // 平台选择上限（对应 F1 三列布局）
 const MAX_PLATFORMS = 3
 // localStorage 记忆键：收藏由云函数 + userKey 持有，本地不再存
@@ -35,7 +37,11 @@ function loadActivePlatforms() {
       const ids = JSON.parse(raw)
       if (Array.isArray(ids) && ids.length >= 1) {
         const valid = ids.filter((id) => PLATFORMS.some((p) => p.id === id))
-        if (valid.length >= 1) return valid.slice(0, MAX_PLATFORMS)
+        // Day 21：存下来的选择里如果一个「已接入数据源」的平台都没有
+        // （比如早先选了知乎 + 小红书 + 待接入平台），首屏三列会全空 → 回退默认值。
+        // 用户仍可在平台选择栏手动选回来，只是不会一进来就撞上全空页面。
+        const hasReady = valid.some((id) => PLATFORMS.find((p) => p.id === id).ready)
+        if (valid.length >= 1 && hasReady) return valid.slice(0, MAX_PLATFORMS)
       }
     }
   } catch {
@@ -92,19 +98,11 @@ export default function App() {
     const userKey = getUserKey()
     const isFav = favorites.some((it) => it.id === id)
     if (isFav) {
-      // 取消：先乐观去掉，再调云函数同步；失败回滚
-      const prev = favorites
+      // 取消：Day 22 接 DELETE 后再真正删后端，今天先乐观更新前端
+      // （云端这条记录暂时留在库里，Day 22 一并清理）
       const next = favorites.filter((it) => it.id !== id)
       setFavorites(next)
-      setToast({ type: 'removed', text: '已取消收藏' })
-      try {
-        // 取消走 DELETE？契约说 Day 22 才有。今天的过渡实现：再次 GET 拉一次真库
-        // （避免 DELETE 不存在导致 404）。Day 22 上线 DELETE 后改这一行。
-        // 占位：调用方暂时无法取消后端记录，但前端体验完整，Day 22 一并清理。
-      } catch {
-        setFavorites(prev)
-        setToast({ type: 'error', text: '取消失败：' + (err.message || '请稍后重试') })
-      }
+      setToast({ type: 'removed', text: '已取消收藏（云端保留待 Day 22）' })
       return
     }
     // 收藏：先调云函数（成功才动本地 state，避免乐观更新后回滚难处理）
@@ -150,12 +148,12 @@ export default function App() {
   // 顶部指标：只在成功态算真值，其它状态给占位
   const stats = useMemo(() => {
     if (!items.length) {
-      return { total: 0, platformCount: PLATFORMS.length, topHeat: 0, topTitle: '' }
+      return { total: 0, platformCount: READY_PLATFORMS.length, topHeat: 0, topTitle: '' }
     }
     const top = items.reduce((m, i) => (i.heat > m.heat ? i : m), items[0])
     return {
       total: items.length,
-      platformCount: PLATFORMS.length,
+      platformCount: READY_PLATFORMS.length,
       topHeat: top.heat,
       topTitle: top.title,
     }
@@ -209,7 +207,7 @@ export default function App() {
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-slate-100 sm:text-3xl">今天，全网在聊什么？</h2>
               <p className="mt-2 text-sm text-slate-400">
-                聚合微博、抖音、B站三大平台的热搜，每 5 分钟从源头拉一次最新榜单。
+                聚合微博、抖音、百度、B站四个平台的热搜，每 5 分钟从源头拉一次最新榜单。
               </p>
             </div>
 
@@ -265,6 +263,7 @@ export default function App() {
                 <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
                 <li><span className="text-emerald-400">Day 13 已完成</span> · F4 详情页 + 三视图路由（我的收藏上线）</li>
                 <li><span className="text-emerald-400">Day 20 已完成</span> · 前端从 mock 切到真接口（/api/hot + /api/favorite）</li>
+                <li><span className="text-emerald-400">Day 21 已完成</span> · 补百度数据源 + 平台「筹备中」标注 + 空态三分</li>
               </ul>
             </div>
           </>
@@ -296,7 +295,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 20 部署到公网：云端数据检查台
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 21 补齐平台数据源：百度接入 + 空态说明
       </footer>
 
       {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}

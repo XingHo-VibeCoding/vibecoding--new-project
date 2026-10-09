@@ -37,22 +37,45 @@ export default function PlatformColumn({
           </h3>
         </div>
         <div className="text-right">
+          {/* Day 21：空列的列头原先会算出「TOP 1–10 / 0」和「-10 条待展开」（负数是 0-10 得来的），
+              看着像算错了。无数据时直接说「暂无数据」。 */}
           <p className="text-xs text-slate-400">
-            TOP {showAll ? `1–${items.length}` : `1–${VISIBLE_COUNT}`} / {items.length}
+            {items.length === 0
+              ? '暂无数据'
+              : `TOP ${showAll ? `1–${items.length}` : `1–${VISIBLE_COUNT}`} / ${items.length}`}
           </p>
-          <p className="mt-0.5 text-xs text-orange-400/80">
-            {showAll ? (isFiltering ? `筛选出 ${items.length} 条` : '已展开全部') : `${hiddenCount} 条待展开`}
-          </p>
+          {items.length > 0 && (
+            <p className="mt-0.5 text-xs text-orange-400/80">
+              {showAll ? (isFiltering ? `筛选出 ${items.length} 条` : '已展开全部') : `${hiddenCount} 条待展开`}
+            </p>
+          )}
         </div>
       </header>
 
-      {/* 榜单列表：无匹配时给出提示（F3 筛选的「无结果」路径） */}
+      {/* 榜单列表：空列分三种情况说明（Day 21 拆开——原先一律说「没有匹配筛选条件」，
+          但用户在没开筛选时看到这句，会以为是自己的筛选把内容筛没了） */}
       {items.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-          <p className="text-sm text-slate-400">
-            {platform.name}没有匹配当前筛选条件的热搜
-          </p>
-          <p className="mt-1 text-xs text-slate-400">清空筛选即可恢复全部 {platform.name}内容</p>
+          {platform.ready === false ? (
+            <>
+              <p className="text-sm text-slate-300">{platform.name}的数据源正在筹备中</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {platform.pending}，暂未接入真实榜单内容
+              </p>
+            </>
+          ) : isFiltering ? (
+            <>
+              <p className="text-sm text-slate-400">
+                {platform.name}没有匹配当前筛选条件的热搜
+              </p>
+              <p className="mt-1 text-xs text-slate-400">清空筛选即可恢复全部 {platform.name}内容</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-400">{platform.name}今天暂时没有榜单数据</p>
+              <p className="mt-1 text-xs text-slate-400">同步任务会定期重新拉取，稍后再来看看</p>
+            </>
+          )}
         </div>
       ) : (
         <ol className="flex-1 divide-y divide-slate-800/40 px-2 py-2">

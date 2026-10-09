@@ -1,6 +1,6 @@
 // 品牌头部 + 全局指标卡（Day 7 第 3 步 F1 建立；Day 8 追加「更新时间 + 状态胶囊」）
 // Day 20：「更新节奏：每 5 分钟」改为显示「最后更新」真实时间（余力加练）
-import { PLATFORMS, formatHeat, formatClock } from '../lib/mockData'
+import { formatHeat, formatClock } from '../lib/mockData'
 import { DATA_STATUS } from '../hooks/useHotData'
 
 // 状态胶囊：让用户随时知道页面当前处于哪种状态
@@ -88,11 +88,11 @@ export default function BrandHeader({ stats, status, updatedAt }) {
       <div className="border-t border-slate-800/60 bg-slate-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
           <span>
-            第 3 周 · <span className="text-orange-400">Day 20</span>
-            <span className="text-slate-400">／28</span> 　 前端切换真实接口 + 公网部署
+            第 3 周 · <span className="text-orange-400">Day 21</span>
+            <span className="text-slate-400">／28</span> 　 补齐平台数据源 + 空态说明
           </span>
           <span>
-            {PLATFORMS.length} 个平台 · 共 {stats.total} 条
+            {stats.platformCount} 个平台已接入 · 共 {stats.total} 条
           </span>
         </div>
       </div>

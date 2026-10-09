@@ -21,7 +21,33 @@
 | 部署物 | 地址 | 上线日 |
 |---|---|---|
 | GET /api/health | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/health | Day 15（2026-10-01） |
-| 前端 mock 版（静态托管） | https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/ | Day 15（2026-10-01） |
+| GET /api/hot | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/hot | Day 17（2026-10-08） |
+| GET /api/favorite | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/favorite | Day 17（2026-10-08） |
+| POST /api/favorite | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/favorite | Day 18（2026-10-08） |
+| POST /api/sync | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/sync | Day 17（2026-10-08） |
+| 前端静态托管（mock 版） | https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/ | Day 15（2026-10-01） |
+| 前端静态托管（真数据版） | https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/ | Day 20（2026-10-08） |
+
+> **Day 21（2026-10-08）改动**：`sync` 云函数新增百度数据源后重新部署
+> （`tcb fn deploy sync --path /api/sync --force`），手动触发一次同步，
+> 云端当日数据变为 weibo 93 / bilibili 101 / douyin 83 / baidu 50 条。
+> 前端静态托管同步更新（文案、平台「筹备中」标注、空态三分）。
+> `hot` / `favorite` / `health` 三个云函数本次未改动，无需重新部署。
+>
+> ⚠️ **已知数据卫生问题**：同一平台当天多次同步会累积（upsert 只去重同标题，
+> 掉榜又回榜的条目会留下），所以 B站 101 条 > 接口单次返回的 50 条。
+> Day 22 需要决定「当天只保留最新一批」的清理策略（注意 favorites 外键级联删除的副作用）。
+
+## 跨域（CORS）配置（Day 20 核实）
+
+静态托管域名 `https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com` 已在 CORS 白名单（Day 15 部署时框架自动加入），可省略手工配置。  
+验证方法：
+
+```bash
+tcb cors list -e rednews-d5gd5vdss6b4d2119 | grep tcloudbaseapp
+curl -sI -X OPTIONS -H "Origin: https://<static-host>" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: Content-Type" "https://<envId>.service.tcloudbase.com/api/<path>"
+# 应返回 204 + access-control-allow-*
+```
 
 ## 部署命令（换机器/重建环境用）
 

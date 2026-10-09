@@ -127,7 +127,7 @@
 
 ### POST /api/sync — 热搜同步（Day 17 板块②）
 
-- **用途**：拉取微博 / B站 / 抖音三个公开榜单（附录 F 指定来源），upsert 进 `trends` 表。手动触发；日后的定时任务复用同一函数。
+- **用途**：拉取微博 / B站 / 抖音 / 百度四个公开榜单（附录 F 指定来源 + Day 21 新增百度），upsert 进 `trends` 表。手动触发；日后的定时任务复用同一函数。
 - **鉴权（当前过渡版）**：可选。环境变量 `SYNC_TOKEN` 配置了才校验（请求头 `x-sync-token` 相等才执行，否则 401）；未配置则放行——被恶意触发的最坏结果是幂等重复写入。
 - **请求**：无 body 要求。
 - **响应 200**（至少一个平台成功）：
@@ -135,17 +135,19 @@
 ```json
 {
   "ok": true,
-  "date": "2026-10-07",
-  "platforms": ["weibo: 30 条", "bilibili: 30 条", "douyin: 失败 — 抖音返回 200 但列表为空，通常是请求头缺少 Referer"]
+  "date": "2026-10-08",
+  "platforms": ["weibo: 30 条", "bilibili: 50 条", "douyin: 45 条", "baidu: 50 条"]
 }
 ```
 
-- **响应 502**（三平台全部失败）：`{ "ok": false, "error": { "code": "UPSTREAM", "message": "三个平台全部抓取失败：微博（…）；B站（…）；抖音（…）" } }`
+- **响应 502**（全部平台失败）：`{ "ok": false, "error": { "code": "UPSTREAM", "message": "全部平台抓取失败：微博（…）；B站（…）；抖音（…）；百度（…）" } }`
 - **实现约定**：
-  - 每平台取前 30 条；三平台并行，单平台失败不影响其他；
+  - 条数口径按各平台接口的实际返回：微博 30 条、B站 50 条（接口 `limit=50`）、抖音取接口返回的全部（约 45 条）、百度 50 条；四平台并行，单平台失败不影响其他；
   - `trend_date` 按**北京时间**（UTC+8）计算，避免云函数 UTC 时区在 0–8 点把当天算成前一天；
   - 写入用 PostgREST upsert（`on_conflict=platform,title,trend_date` + `Prefer: resolution=merge-duplicates`），重复执行不产生重复行；
-  - 同步数据 `category` 固定 `'general'`（三个公开接口不提供分类）；`id` = `{platform}-{trend_date}-{md5(title) 前 8 位}`（不含 rank——排名会变，id 必须稳定，`favorites` 外键锚定它）。
+  - 同步数据 `category` 固定 `'general'`（公开接口不提供分类）；`id` = `{platform}-{trend_date}-{md5(title) 前 8 位}`（不含 rank——排名会变，id 必须稳定，`favorites` 外键锚定它）。
+  - **百度特例（Day 21）**：响应结构为 `data.cards[]` → 取 `component === 'tabTextList'` → `content[0].content[]`；数组第 0 项是 `isTop: true` 的置顶条目（不带 `index`），**必须剔除**，否则会和真正的第 1 名撞 `rank`；其余按下标重新编号。该接口**不返回热度值**，`heat` 记 `0`，前端对 `heat === 0` 的条目隐藏热度块。
+- **未接入的平台（Day 21 实测）**：知乎 `api/v3/feed/topstory/hot-lists/total` 返回 **401 身份未经过验证**（需登录 Cookie，云端无稳定凭据）；小红书无公开榜单接口（需登录态 + 前端签名）。两者不做假数据填充，前端在选择栏与空列标注「数据源筹备中」。
 
 ---
 
@@ -199,3 +201,4 @@
 | 2026-10-07 | v0.3 | Day 17：GET /api/hot 上线（读 trends）；GET /api/favorite 过渡版上线（userKey 走查询参数，Day 19 换 token）。云函数取数走 HTTP API + 服务端 API Key（环境变量，不入仓库） |
 | 2026-10-07 | v0.4 | Day 17 板块②：新增 POST /api/sync（微博/B站/抖音公开榜单同步，幂等 upsert）；category 枚举新增 general（真库已 ALTER，schema.sql 同步）；同步数据 id 改为 platform-date-标题hash 格式 |
 | 2026-10-08 | v0.5 | Day 18：POST /api/favorite 定稿并上线——重复收藏由「幂等 200」改为 409 明确拒绝（对齐手册 Day 18 完成标准），补齐 userKey/itemId 校验与 itemId 存在性检查 |
+| 2026-10-08 | v0.6 | Day 21：POST /api/sync 新增百度数据源（榜单 3 → 4 个平台），明确百度置顶项剔除与 heat=0 口径；记录知乎 401 / 小红书无公开接口的实测结论与「数据源筹备中」的降级约定 |

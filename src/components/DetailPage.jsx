@@ -146,7 +146,7 @@ export default function DetailPage({
         {/* 信息四要素 */}
         <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <InfoCell label="当前排名" value={`第 ${item.rank} 名`} />
-          <InfoCell label="热度值" value={formatHeat(item.heat)} />
+          <InfoCell label="热度值" value={item.heat > 0 ? formatHeat(item.heat) : '—'} />
           <InfoCell label="发布时间" value={formatRelative(item.publishedAt, anchor)} />
           <InfoCell label="来源平台" value={platform.name} />
         </dl>

@@ -40,10 +40,14 @@ export default function HotItem({ item, now, isFavorited = false, onToggleFavori
           >
             {cat.name}
           </span>
-          <span className="text-orange-400/90">
-            <span className="font-semibold">{formatHeat(item.heat)}</span>
-            <span className="ml-0.5 text-slate-400">热度</span>
-          </span>
+          {/* Day 21：百度榜单接口不返回热度值（heat 记 0），
+              这类条目就不渲染热度块，避免出现「0 热度」这种刺眼文案 */}
+          {item.heat > 0 && (
+            <span className="text-orange-400/90">
+              <span className="font-semibold">{formatHeat(item.heat)}</span>
+              <span className="ml-0.5 text-slate-400">热度</span>
+            </span>
+          )}
           <span className="text-slate-400">{formatRelative(item.publishedAt, now)}</span>
         </div>
       </div>

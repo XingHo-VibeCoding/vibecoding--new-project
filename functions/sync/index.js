@@ -1,9 +1,17 @@
 // 热搜同步云函数 POST /api/sync（Day 17 板块②，按手册附录 F 规格实现）
 //
-// 数据源（必须原样使用这三个公开接口，不替换、不绕过任何反爬/登录/频率限制）：
+// 数据源（必须原样使用这些公开接口，不替换、不绕过任何反爬/登录/频率限制）：
 //   1. 微博  https://weibo.com/ajax/side/hotSearch
 //   2. B站   https://api.bilibili.com/x/web-interface/search/square?limit=50
 //   3. 抖音  https://www.douyin.com/aweme/v1/web/hot/search/list/?device_platform=webapp&aid=6383
+//   4. 百度  https://top.baidu.com/api/board?platform=wise&tab=realtime（Day 21 新增）
+//
+// 【为什么只有 4 个平台】（Day 21 实测结论）
+//   知乎  https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total → 401 身份未经过验证，
+//         需要登录 Cookie，云函数侧拿不到稳定凭据，且 Cookie 会过期。
+//   小红书 无公开榜单接口，请求需要登录态 + 前端签名，云端不可行。
+//   这两个平台保留在选择栏里，但标记为「数据源筹备中」（见 src/lib/mockData.js 的 ready 字段），
+//   不做假数据填充——宁可空着并说明原因，也不伪造。
 //
 // 请求头（附录 F 明确：缺一个就失败）：
 //   User-Agent 必须是桌面 Chrome；Referer 各平台用自己的站点首页。
@@ -96,12 +104,44 @@ async function fetchDouyin() {
     }))
 }
 
+// 百度热搜（Day 21 新增）：https://top.baidu.com/api/board?platform=wise&tab=realtime
+// 结构比前三个都绕，要三层下钻：data.cards[] → 找 component === 'tabTextList' → content[0].content[]
+// 两个坑：
+//   1. 榜单数组里第 0 项是「置顶」条目（isTop: true），不带 index。若不剔除，
+//      它和真正 index=1 的那条都会算成第 1 名，库里就有两行 rank=1。
+//      百度页面本身也不给置顶项编号，所以剔除它、其余按下标重新编号，与页面口径一致。
+//   2. 该接口不返回热度值（没有 hotScore 字段），heat 一律记 0；
+//      前端 HotItem 对 heat === 0 的条目不渲染热度块，不会显示成「0 热度」。
+async function fetchBaidu() {
+  const res = await fetch('https://top.baidu.com/api/board?platform=wise&tab=realtime', {
+    headers: { 'User-Agent': UA, Referer: 'https://top.baidu.com/board?tab=realtime' },
+  })
+  if (!res.ok) throw new Error(`百度接口返回 ${res.status}`)
+  const json = await res.json()
+  const cards = json && json.data && Array.isArray(json.data.cards) ? json.data.cards : []
+  const card = cards.find((c) => c && c.component === 'tabTextList') || cards[0]
+  const list =
+    card && Array.isArray(card.content) && card.content[0] && Array.isArray(card.content[0].content)
+      ? card.content[0].content
+      : []
+  if (list.length === 0) throw new Error('百度返回了空的榜单列表')
+  return list
+    .filter((it) => it && it.word && !it.isTop)
+    .slice(0, 50)
+    .map((it, i) => ({
+      title: it.word,
+      rank: i + 1,
+      heat: 0,
+    }))
+}
+
 // ---------- 组装 trends 行 ----------
 
 function searchUrl(platform, title) {
   const q = encodeURIComponent(title)
   if (platform === 'weibo') return `https://s.weibo.com/weibo?q=${q}`
   if (platform === 'bilibili') return `https://search.bilibili.com/all?keyword=${q}`
+  if (platform === 'baidu') return `https://www.baidu.com/s?wd=${q}`
   return `https://www.douyin.com/search/${q}`
 }
 
@@ -154,11 +194,12 @@ exports.main = async function (event) {
   const trendDate = beijingDate()
   const fetchedAt = new Date().toISOString()
 
-  // 三个平台并行抓取，单个失败不影响其他（附录 F 要求 1）
+  // 四个平台并行抓取，单个失败不影响其他（附录 F 要求 1）
   const tasks = [
     ['weibo', fetchWeibo],
     ['bilibili', fetchBilibili],
     ['douyin', fetchDouyin],
+    ['baidu', fetchBaidu],
   ].map(async ([platform, fetcher]) => {
     try {
       const items = await fetcher()
@@ -177,13 +218,13 @@ exports.main = async function (event) {
   const okPlatforms = results.filter((r) => r.error === null)
   const failedPlatforms = results.filter((r) => r.error !== null)
 
-  // 三个平台全部失败：返回失败，页面保 seed 标「示例数据」（附录 F 要求 6）
+  // 全部平台都失败：返回失败，页面保 seed 标「示例数据」（附录 F 要求 6）
   if (okPlatforms.length === 0) {
     return jsonOut(502, {
       ok: false,
       error: {
         code: 'UPSTREAM',
-        message: `三个平台全部抓取失败：${failedPlatforms.map((r) => `${r.platform}（${r.error}）`).join('；')}`,
+        message: `全部平台抓取失败：${failedPlatforms.map((r) => `${r.platform}（${r.error}）`).join('；')}`,
       },
     })
   }
