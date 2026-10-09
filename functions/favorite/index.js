@@ -1,10 +1,12 @@
 // Day 17 板块①：GET /api/favorite —— 收藏列表
 // Day 18 板块①：POST /api/favorite —— 添加收藏（第一条业务写入接口）
 // Day 19 重构：所有 SQL 抽到 ./repositories/*，本文件零 SQL。
+// Day 22：DELETE /api/favorite —— 取消收藏（数据操作闭环的"删"）。
 //
-// 契约：api-contract.md「三、GET/POST /api/favorite」：
-//   GET  返回 { ok: true, items: [HotItem] }，按收藏时间倒序（对齐前端 localStorage 头插法）
-//   POST 返回 { ok: true }；重复收藏 409 DUPLICATE；校验失败 400 中文说明
+// 契约：api-contract.md「三、GET/POST/DELETE /api/favorite」：
+//   GET    返回 { ok: true, items: [HotItem] }，按收藏时间倒序（对齐前端 localStorage 头插法）
+//   POST   返回 { ok: true }；重复收藏 409 DUPLICATE；校验失败 400 中文说明
+//   DELETE 返回 { ok: true }，幂等（未收藏时也成功）
 //
 // ⚠️ 过渡实现（Day 17–18）：本课程 Day 23 前没有登录体系（不建用户表），
 //    user_key 先用查询参数（GET）/ 请求 body（POST）传入；Day 19 契约升级为
@@ -123,6 +125,39 @@ async function handleGet(event) {
   return respond(200, { ok: true, items: ordered })
 }
 
+// ---------- DELETE：取消收藏（Day 22）----------
+// 走 queryString（与 GET 一致）；幂等：未收藏时调用也返回 0 行受影响，HTTP 仍 200。
+// 不做"先 existsByUserAndItem 再 delete"的两步：避免多一次网络往返与并发幻读，
+// PostgREST 的 DELETE with filter 是原子的。
+async function handleDelete(event) {
+  const qs = event.queryStringParameters || {}
+  const userKey = (qs.userKey || '').trim()
+  const itemId = (qs.itemId || '').trim()
+
+  if (!userKey) return badRequest('缺少 userKey 参数（Day 19 起改用 Authorization 认证）')
+  if (!itemId) return badRequest('缺少 itemId 参数')
+  if (userKey.length > LIMITS.userKey) {
+    return badRequest(`userKey 超长：最多 ${LIMITS.userKey} 个字符，收到 ${userKey.length} 个`)
+  }
+  if (itemId.length > LIMITS.itemId) {
+    return badRequest(`itemId 超长：最多 ${LIMITS.itemId} 个字符，收到 ${itemId.length} 个`)
+  }
+
+  await favoritesRepository.deleteByUserAndItem(userKey, itemId)
+
+  // 服务端日志（与 POST 风格一致）
+  console.log(
+    JSON.stringify({
+      action: 'favorite_remove',
+      userKey,
+      itemId,
+      result: 'ok',
+      time: new Date().toISOString(),
+    })
+  )
+  return respond(200, { ok: true })
+}
+
 exports.main = async (event) => {
   if (!apiConfigured()) {
     return respond(500, {
@@ -138,6 +173,9 @@ exports.main = async (event) => {
   try {
     if (method === 'POST') {
       return await handlePost(event)
+    }
+    if (method === 'DELETE') {
+      return await handleDelete(event)
     }
     return await handleGet(event)
   } catch (err) {

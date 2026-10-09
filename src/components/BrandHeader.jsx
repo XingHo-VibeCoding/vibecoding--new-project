@@ -88,8 +88,8 @@ export default function BrandHeader({ stats, status, updatedAt }) {
       <div className="border-t border-slate-800/60 bg-slate-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
           <span>
-            第 3 周 · <span className="text-orange-400">Day 21</span>
-            <span className="text-slate-400">／28</span> 　 补齐平台数据源 + 空态说明
+            第 4 周 · <span className="text-orange-400">Day 22</span>
+            <span className="text-slate-400">／28</span> 　 数据操作闭环：DELETE /api/favorite 上线
           </span>
           <span>
             {stats.platformCount} 个平台已接入 · 共 {stats.total} 条

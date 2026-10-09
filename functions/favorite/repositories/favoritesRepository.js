@@ -29,4 +29,14 @@ async function insert(userKey, itemId) {
   })
 }
 
-module.exports = { findByUserKey, existsByUserAndItem, insert }
+// 取消一条收藏（Day 22）—— 幂等：未收藏时调用也返回 0 行受影响，不报错
+// 不做"先 select 再 delete"的两步走是为了减少一次网络往返，也避免 select-到-delete 之间被并发
+// 收藏导致的幻读；DELETE with filter 在 PostgREST 上是原子的。
+async function deleteByUserAndItem(userKey, itemId) {
+  await rest(
+    `/v1/rdb/rest/favorites?user_key=eq.${encodeURIComponent(userKey)}&item_id=eq.${encodeURIComponent(itemId)}`,
+    { method: 'DELETE', headers: { Prefer: 'return=minimal' } }
+  )
+}
+
+module.exports = { findByUserKey, existsByUserAndItem, insert, deleteByUserAndItem }

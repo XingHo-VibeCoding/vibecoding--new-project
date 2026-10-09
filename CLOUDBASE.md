@@ -25,18 +25,20 @@
 | GET /api/favorite | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/favorite | Day 17（2026-10-08） |
 | POST /api/favorite | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/favorite | Day 18（2026-10-08） |
 | POST /api/sync | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/sync | Day 17（2026-10-08） |
+| DELETE /api/favorite | https://rednews-d5gd5vdss6b4d2119.service.tcloudbase.com/api/favorite | Day 22（2026-10-09） |
 | 前端静态托管（mock 版） | https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/ | Day 15（2026-10-01） |
 | 前端静态托管（真数据版） | https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com/ | Day 20（2026-10-08） |
 
-> **Day 21（2026-10-08）改动**：`sync` 云函数新增百度数据源后重新部署
-> （`tcb fn deploy sync --path /api/sync --force`），手动触发一次同步，
-> 云端当日数据变为 weibo 93 / bilibili 101 / douyin 83 / baidu 50 条。
-> 前端静态托管同步更新（文案、平台「筹备中」标注、空态三分）。
-> `hot` / `favorite` / `health` 三个云函数本次未改动，无需重新部署。
+> **Day 22（2026-10-09）改动**：数据操作闭环——取消收藏走真接口。
+> - 后端：`favorite` 云函数新增 `handleDelete` 分支（`favoritesRepository.deleteByUserAndItem` 走 PostgREST `DELETE with filter`，幂等：未收藏也返 200）。
+> - 前端：`src/lib/api.js` 加 `removeFavorite`；`src/App.jsx` 的 `toggleFavorite` 取消路径从「乐观删本地 + 提示『云端保留待 Day 22』」改为「先打 DELETE → 成功才动本地 state → 失败回滚」；toast 文案改成「已取消收藏」。
+> - 契约：`api-contract.md` v0.7 改写 DELETE 段、补全参数/校验/状态码；新增「五、PATCH 范围说明」段（favorites 是开关式、trends 由 sync 写，本项目当前无可写字段，**PATCH 不暴露**）；章节编号五→六、六→七。
+> - 部署：`tcb fn deploy favorite --path /api/favorite --force`（云函数 COS 上传成功），`tcb hosting deploy dist /`（前端静态托管上传 3 文件，产物 hash `index-Dt5c0EXR.js`）。
+> - 实测：公网跑 23 个回归用例（基线空 → POST → GET 验证 → DELETE → GET 验证 → DELETE 幂等 → 缺 userKey 400 → 缺 itemId 400 → 重复 POST 409 → 清理），全部 ✅。
+> - 未改：`hot` / `sync` / `health` 三个云函数本次未动。
 >
-> ⚠️ **已知数据卫生问题**：同一平台当天多次同步会累积（upsert 只去重同标题，
-> 掉榜又回榜的条目会留下），所以 B站 101 条 > 接口单次返回的 50 条。
-> Day 22 需要决定「当天只保留最新一批」的清理策略（注意 favorites 外键级联删除的副作用）。
+> ⚠️ **Day 22 已知数据卫生问题（沿用 Day 21 标记）**：同一平台当天多次同步会累积，所以 B站 101 条 > 接口单次返回 50 条。Day 23 起需要决定「当天只保留最新一批」的清理策略（注意 favorites 外键级联删除的副作用）。
+>
 
 ## 跨域（CORS）配置（Day 20 核实）
 

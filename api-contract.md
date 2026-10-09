@@ -111,9 +111,17 @@
 - **防重复（409 DUPLICATE）**：同一 `userKey + itemId` 已在收藏中 → 返回 `{ok:false, error:{code:"DUPLICATE", message:"该热搜已在收藏中"}}`，数据库行数不增。（Day 18 修订：原 v0.4 定的「幂等 200」改为明确拒绝，对齐手册 Day 18 完成标准——重复可被感知，错误信息可读。）
 - **响应 200**：`{ "ok": true }`
 
-### DELETE /api/favorite/:itemId — 取消收藏（Day 19）
+### DELETE /api/favorite — 取消收藏（Day 22 实现上线）
 
-- **响应 200**：`{ "ok": true }`；未收藏时删除也返回 200（幂等）。
+- **认证（当前过渡版）**：`userKey` 走查询参数（与 GET 一致；Day 19 起改 `Authorization: Bearer <jwt>`）。
+- **请求**：`DELETE /api/favorite?userKey=seed-user-yolo&itemId=weibo-2026-10-08-76363973`
+- **校验（400 BAD_REQUEST）**：
+  - `userKey` / `itemId` 必填、非空字符串，超长拒绝（userKey ≤ 64 字符、itemId ≤ 128 字符）；
+  - 不再单独校验 `itemId` 是否存在于 `trends` 表——取消不存在的收藏是合法的"幂等清理"，返 200；即使 `itemId` 在 `trends` 已被删除（外键 ON DELETE CASCADE 已级联），DELETE favorites 也会返 0 行，**不会有外键错误**。
+- **幂等**：未收藏时调用返 200 `{ ok: true }`（PostgREST `DELETE with filter` 不影响行时不报错，0 行响应在仓库层吞掉、不返 404）。
+- **响应 200**：`{ "ok": true }`
+- **实现说明**：云函数 `favorite` 走 HTTP API `DELETE /v1/rdb/rest/favorites?user_key=eq.&item_id=eq.`，`Prefer: return=minimal` 不取回行。一步走完（不做 `existsByUserAndItem` + `delete` 两步）以减少网络往返与并发幻读。
+- **实测记录**：2026-10-09 部署后本机用现有 user 验证：先 POST 收藏 → DELETE 取消 → GET 列表为空；再 DELETE 一次（幂等）→ 仍 200。
 
 ### GET /api/preferences — 个性化偏好（Day 20）
 
@@ -157,7 +165,20 @@
 
 ---
 
-## 五、数据模型（Day 16 定稿，建表脚本见 `db/schema.sql`）
+## 五、PATCH 范围说明（Day 22 决议）
+
+学习计划 Day 22「补齐修改和删除：PATCH / DELETE」原意是数据操作闭环。本项目当前设计下，**PATCH 接口不暴露**。原因如下：
+
+| 资源 | 字段 | 是否需要 PATCH | 说明 |
+|---|---|---|---|
+| `favorites` | user_key / item_id / created_at | ❌ | 开关式收藏：可加可删，但**没有可改字段**（收藏时间改了没意义，user/item 不能改） |
+| `trends` | platform / title / rank / heat / category / url / published_at / trend_date | ❌ | 完全由 `POST /api/sync` 写入；用户层无改写入口 |
+
+如未来需要给收藏加「备注」「分组」「标签」等可改字段，再补 `PATCH /api/favorite/:itemId`；给热搜加「手动校正分类」功能，再补 `PATCH /api/hot/:id`。**当前不做**。
+
+---
+
+## 六、数据模型（Day 16 定稿，建表脚本见 `db/schema.sql`）
 
 > 表结构从本契约的返回形状推导，与前端 `mockData.js` 的 HotItem 字段一字不差。字段名用 snake_case（数据库侧），接口 JSON 保持 camelCase（如 `publishedAt` ↔ `published_at`），云函数层做映射。
 
@@ -192,7 +213,7 @@
 
 ---
 
-## 六、变更记录
+## 七、变更记录
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
@@ -202,3 +223,4 @@
 | 2026-10-07 | v0.4 | Day 17 板块②：新增 POST /api/sync（微博/B站/抖音公开榜单同步，幂等 upsert）；category 枚举新增 general（真库已 ALTER，schema.sql 同步）；同步数据 id 改为 platform-date-标题hash 格式 |
 | 2026-10-08 | v0.5 | Day 18：POST /api/favorite 定稿并上线——重复收藏由「幂等 200」改为 409 明确拒绝（对齐手册 Day 18 完成标准），补齐 userKey/itemId 校验与 itemId 存在性检查 |
 | 2026-10-08 | v0.6 | Day 21：POST /api/sync 新增百度数据源（榜单 3 → 4 个平台），明确百度置顶项剔除与 heat=0 口径；记录知乎 401 / 小红书无公开接口的实测结论与「数据源筹备中」的降级约定 |
+| 2026-10-09 | v0.7 | Day 22：DELETE /api/favorite 实现上线（取消收藏，幂等 200）；新增「五、PATCH 范围说明」——favorites 是开关式、trends 由 sync 写，本项目当前无可写字段，**PATCH 接口不暴露** |

@@ -18,7 +18,7 @@ import ErrorState from './components/ErrorState'
 import { PLATFORMS, READY_PLATFORMS } from './lib/mockData'
 import { useHotData, DATA_STATUS } from './hooks/useHotData'
 import { useHashRoute } from './hooks/useHashRoute'
-import { getFavorites, addFavorite, getUserKey } from './lib/api'
+import { getFavorites, addFavorite, removeFavorite, getUserKey } from './lib/api'
 
 // 默认展示前 3 个平台：微博 / 抖音 / B站（PRD F2）
 // Day 21：原默认值是 ['weibo','zhihu','douyin']，但知乎的数据源需要登录态、暂未接入，
@@ -90,19 +90,21 @@ export default function App() {
   }, [])
 
   // 收藏 / 取消收藏：
-  //   1. 乐观更新本地 state（点星立刻亮）
-  //   2. 调云函数：成功就保留；失败回滚 + 提示
-  //   3. 取消 = 调云函数（DELETE 是 Day 22，今天只能在客户端从列表中过滤掉；
-  //      接口侧仍存在这条记录。临时做法：再拉一次 favorites 同步真库状态。）
+  //   1. 先调云函数（失败就不动本地 state，避免乐观更新后回滚难处理）
+  //   2. 成功才动本地 state
+  //   Day 22：取消收藏调 DELETE /api/favorite，后端幂等（未收藏返 0 行仍 200）
   const toggleFavorite = useCallback(async (id) => {
     const userKey = getUserKey()
     const isFav = favorites.some((it) => it.id === id)
     if (isFav) {
-      // 取消：Day 22 接 DELETE 后再真正删后端，今天先乐观更新前端
-      // （云端这条记录暂时留在库里，Day 22 一并清理）
-      const next = favorites.filter((it) => it.id !== id)
-      setFavorites(next)
-      setToast({ type: 'removed', text: '已取消收藏（云端保留待 Day 22）' })
+      // 取消收藏：先打 DELETE；失败时本地 state 保持不变
+      try {
+        await removeFavorite({ userKey, itemId: id })
+        setFavorites(favorites.filter((it) => it.id !== id))
+        setToast({ type: 'removed', text: '已取消收藏' })
+      } catch (err) {
+        setToast({ type: 'error', text: '取消失败：' + (err.message || '请稍后重试') })
+      }
       return
     }
     // 收藏：先调云函数（成功才动本地 state，避免乐观更新后回滚难处理）
@@ -264,6 +266,7 @@ export default function App() {
                 <li><span className="text-emerald-400">Day 13 已完成</span> · F4 详情页 + 三视图路由（我的收藏上线）</li>
                 <li><span className="text-emerald-400">Day 20 已完成</span> · 前端从 mock 切到真接口（/api/hot + /api/favorite）</li>
                 <li><span className="text-emerald-400">Day 21 已完成</span> · 补百度数据源 + 平台「筹备中」标注 + 空态三分</li>
+                <li><span className="text-emerald-400">Day 22 已完成</span> · DELETE /api/favorite 上线：取消收藏走真接口（幂等），toggleFavorite 同步</li>
               </ul>
             </div>
           </>
@@ -295,7 +298,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 21 补齐平台数据源：百度接入 + 空态说明
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 22 数据操作闭环：DELETE /api/favorite 上线
       </footer>
 
       {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}

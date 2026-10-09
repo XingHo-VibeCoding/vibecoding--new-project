@@ -90,6 +90,15 @@ export async function addFavorite({ userKey, itemId }) {
   })
 }
 
+// DELETE /api/favorite?userKey=...&itemId=...（Day 22）
+// 后端走 queryString（与 GET 一致）；幂等：未收藏时也返 200
+export async function removeFavorite({ userKey, itemId }) {
+  return request(
+    `/api/favorite?userKey=${encodeURIComponent(userKey)}&itemId=${encodeURIComponent(itemId)}`,
+    { method: 'DELETE' },
+  )
+}
+
 // GET /api/health（检查台展示用）
 export async function getHealth() {
   return request('/api/health')
