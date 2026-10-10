@@ -21,6 +21,12 @@
 //   等价于 SQL 的 INSERT ... ON CONFLICT (platform,title,trend_date) DO UPDATE，
 //   重复执行不产生重复行（幂等）。
 //
+// 清理：Day 24 起，upsert 之前先按 (platform, trend_date) 删掉「id 不在本批 keepIds」的旧行。
+//   修「B站 101 > 单次 50（rank 9/27/40/46 重复）」——同 rank 换标题的新词条
+//   不触发 ON CONFLICT，旧行原样保留会累积。删旧 → 插新，保证当天就是当前抓到的那批。
+//   副作用：favorites.item_id 的 FK 是 ON DELETE CASCADE，被删 trends 行指向的收藏
+//   静默删除（CLOUDBASE.md Day 22 已记此约束）。
+//
 // 触发：POST /api/sync。可选鉴权：环境变量 SYNC_TOKEN 配了才校验
 //   （请求头 x-sync-token 与之相等才执行）；没配就放行——课程 MVP 阶段的取舍，
 //   被恶意触发的最坏结果只是重复幂等写入。
@@ -205,6 +211,12 @@ exports.main = async function (event) {
       const items = await fetcher()
       const rows = items.map((it) => toRow(platform, it, trendDate, fetchedAt))
       if (rows.length > 0) {
+        // Day 24｜先清掉「当天同平台、本轮没抓到的新 rank 旧条目」再 upsert 本批
+        // 修 50→54（rank 9/27/40/46 重复）的根因：upsert 的冲突键是 (platform,title,trend_date)，
+        // 同 rank 换标题的新词条原样保留，旧行就累积下来。
+        // 收藏：favorites.item_id 的 FK 是 ON DELETE CASCADE，被删 trends 行指向的收藏静默删。
+        const keepIds = rows.map((r) => r.id)
+        await trendsRepository.deleteStaleByPlatformAndDate(platform, trendDate, keepIds)
         await trendsRepository.upsertMany(rows)
       }
       return { platform, count: rows.length, error: null }

@@ -52,6 +52,27 @@
 > 2. 给 `sync` 云函数配 `SYNC_TOKEN` 环境变量——按 `SECURITY.md` §2 步骤，候选 token `4171119ab998e7739771e86d816ab1ef`（也可本地 `openssl rand -hex 16` 自生成）。
 > 配完后我跑两轮回归命令：① 4 接口 200（API Key 切换成功）② 无 header POST /api/sync → 401 + 带 `x-sync-token` → 200（鉴权生效）。
 >
+> ✅ Day 23 控制台操作已闭环（详见 `2026-10-10.md` 日志 + `SECURITY.md` 末段「Day 23 实测闭环」）：API Key 轮换 + SYNC_TOKEN 配齐 + 鉴权回归通过。
+>
+> ---
+>
+> **Day 24（2026-10-10）改动**：修复真实 Bug——「同平台当天多次 sync 累积」让 B 站列出 54 条（rank 9/27/40/46 各重复一次）。
+> - **复现**：公网 `/api/hot?platforms=bilibili` 拿到 54 条，rank 范围 1-50 但有 4 个 rank 各重复；前端 B 站列展开后视觉可见「同一 rank 出现两次不同标题」（截图 `screenshots/day24-bug-bilibili.png`，复现阶段留证）。
+> - **定位**：排除 A 接口返 54（实测只返 50）、B 客户端拼错（后端直接查也 54）、C 网络去重（重复条目不同）、D upsert 不删同 rank 异标题旧行——锁定 D。upsert 的 ON CONFLICT 键是 `(platform,title,trend_date)` 不含 rank，第 N+1 次 sync 时同一 rank 上换成新标题，旧行因新标题不命中冲突而原样保留 → 累积。
+> - **修复（方案 A）**：`functions/sync/repositories/trendsRepository.js` 新增 `deleteStaleByPlatformAndDate(platform, trendDate, keepIds)`，用 `id=not.in.(keepIds)` 清掉本轮没抓到的新 rank 旧行；`functions/sync/index.js` 在 `upsertMany` 之前先调 cleanup。收藏靠 `favorites.item_id` 的 FK `ON DELETE CASCADE` 自然静默删（**这是 day-24 选方案 A 的取舍**：业务上「词条下榜 → 收藏也跟着下榜」符合直觉，留住 ghost 行反而误导用户；`api-contract.md` 不动，因为接口形状没变）。
+> - **部署**：`tcb fn deploy sync --path /api/sync --force`（COS 上传成功）；前端无改动，hash 不动。
+> - **验证**（公网 `/api/hot`，2026-10-10 16:12 GMT+8）：
+>   - weibo:    30 条 / 重复 rank=[4]（**上游接口数据质量问题，非 sync bug，见下条「不顺手修清单」**）
+>   - douyin:   49 条 / 重复 rank=[] / rank 范围 1-49 ✅
+>   - bilibili: 50 条 / 重复 rank=[] / rank 范围 1-50 ✅（修复前 54 条 / 4 个重复）
+>   - baidu:    50 条 / 重复 rank=[] / rank 范围 1-50 ✅
+> - **幂等性**：再跑一次 `POST /api/sync`（相同 token），bilibili 仍 50 条 / 0 重复——cleanup + upsert 组合稳定。
+> - **前端留证**：截图 `screenshots/day24-fix-overview.png`（含全部 4 列）+ `screenshots/day24-fix-full.png`（B 站列展开 50 条）；API 证据 `screenshots/day24-api-evidence.txt`。
+> - **不顺手修的 Bug 清单**（Day 24 任务要求「记录下来但不修」）：
+>   1. 微博接口本身 `realpos=4` 出现两次（30 条数据里有 2 条 rank=4）—— 上游数据质量问题，记入 Day 25+ 选题候选。
+>
+> ---
+
 ## 跨域（CORS）配置（Day 20 核实）
 
 静态托管域名 `https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com` 已在 CORS 白名单（Day 15 部署时框架自动加入），可省略手工配置。  
