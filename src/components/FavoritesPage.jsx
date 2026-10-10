@@ -1,10 +1,11 @@
 // Day 13｜V3 我的收藏（PRD V3）：已收藏条目列表，按收藏时间倒序
 // Day 20：favorites 已是 HotItem[]（来自云函数 /api/favorite），不再用 items 拼接
+// Day 23：loadFailed —— 首次拉取失败不再被当成「还没有收藏」（拿不到 ≠ 没有）
 // 头插法天然倒序，无需额外排序
 import HotItem from './HotItem'
 import { DATA_STATUS } from '../hooks/useHotData'
 
-export default function FavoritesPage({ status, favorites = [], onToggleFavorite, now }) {
+export default function FavoritesPage({ status, favorites = [], loadFailed, onToggleFavorite, now }) {
   // 收藏列表：favorites 本身就是头插法排列，新收藏在前
   const favItems = favorites
 
@@ -18,6 +19,17 @@ export default function FavoritesPage({ status, favorites = [], onToggleFavorite
             : '收藏保存在云端，跨设备同步。'}
         </p>
       </div>
+
+      {/* Day 23：拉取失败的降级提示——不阻断页面，但让用户知道「这个列表可能不全」。
+          空列表 + loadFailed 同时成立时，下面的空态会改口说「不确定有没有收藏」。 */}
+      {loadFailed && status !== DATA_STATUS.LOADING && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+        >
+          云端收藏暂时没拉到（网络或服务端问题），下面显示的可能不是全量。刷新页面可重试。
+        </div>
+      )}
 
       {/* 加载中：云端数据没到之前不能直接判空 */}
       {status === DATA_STATUS.LOADING && favorites.length === 0 && (
@@ -42,25 +54,39 @@ export default function FavoritesPage({ status, favorites = [], onToggleFavorite
         </div>
       )}
 
-      {/* 空态：一条收藏都没有，给出下一步动作 */}
+      {/* 空态：一条收藏都没有，给出下一步动作。
+          Day 23：拉取失败时空态不再咬定「还没有收藏」——改为「不确定」，给刷新入口 */}
       {status !== DATA_STATUS.LOADING && favItems.length === 0 && (
         <div
           role="status"
           className="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 px-8 py-16 text-center"
         >
           <p className="text-4xl" aria-hidden="true">
-            ☆
+            {loadFailed ? '⚠' : '☆'}
           </p>
-          <h3 className="mt-3 text-lg font-semibold text-slate-300">还没有收藏</h3>
+          <h3 className="mt-3 text-lg font-semibold text-slate-300">
+            {loadFailed ? '暂时拉不到你的收藏' : '还没有收藏'}
+          </h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
-            回首页，点任意一条热搜右边的 ☆ 就会出现在这里。
+            {loadFailed
+              ? '云端没回应，不确定你有没有收藏过。刷新页面重试；一直失败请稍后再来。'
+              : '回首页，点任意一条热搜右边的 ☆ 就会出现在这里。'}
           </p>
-          <a
-            href="#/"
-            className="mt-6 inline-block rounded-lg border border-slate-600 bg-slate-800/50 px-5 py-2 text-sm text-slate-200 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
-          >
-            去首页逛逛 →
-          </a>
+          {loadFailed ? (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-lg border border-slate-600 bg-slate-800/50 px-5 py-2 text-sm text-slate-200 transition hover:border-amber-500/60 hover:bg-amber-500/10 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+            >
+              ↻ 刷新重试
+            </button>
+          ) : (
+            <a
+              href="#/"
+              className="mt-6 inline-block rounded-lg border border-slate-600 bg-slate-800/50 px-5 py-2 text-sm text-slate-200 transition hover:border-orange-500/60 hover:bg-orange-500/10 hover:text-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
+            >
+              去首页逛逛 →
+            </a>
+          )}
         </div>
       )}
 

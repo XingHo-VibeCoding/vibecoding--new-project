@@ -40,6 +40,18 @@
 > ⚠️ **Day 22 已知数据卫生问题（沿用 Day 21 标记）**：同一平台当天多次同步会累积，所以 B站 101 条 > 接口单次返回 50 条。Day 23 起需要决定「当天只保留最新一批」的清理策略（注意 favorites 外键级联删除的副作用）。
 >
 
+> **Day 23（2026-10-09）改动**：错误处理 + 安全边界。
+> - 前端：8 文件——`src/lib/api.js` 的 `request()` 加 `AbortController` 10s 超时（断网不再 Loading 死锁）+ `errorKind()` 分类（NETWORK/TIMEOUT/SERVER/API）；`src/hooks/useHotData.js` 多存 `errorKind` 状态；`src/components/ErrorState.jsx` 按 kind 换「网络连不上/请求超时/服务端开小差」三套文案；`src/components/DetailPage.jsx` 透传 kind；`src/App.jsx` 收藏首次拉取失败不再静默 setFavorites([])，改记 `favoritesLoadFailed` 状态透传给收藏页；`src/components/FavoritesPage.jsx` 加黄色降级提示条 + 空态文案改成「不确定你有没有收藏过」；`src/components/BrandHeader.jsx` 进度 Day 22 → Day 23。
+> - 文档：新增 `SECURITY.md`——6 面安全自查（API Key 管理 / CORS / userKey 伪造他用户 / `/api/sync` 匿名可触发 / PostgREST 注入 / localStorage），每面「现状/风险/缓解/何时修」，含两条控制台操作（API Key 轮换 + SYNC_TOKEN 配置）的保姆级步骤。
+> - 部署：`tcb hosting deploy dist /`（前端 3 文件，产物 hash `index-DV6Jn0v1.js`，180 KB）。
+> - 实测：dry-run 22 用例全过（esbuild 打包 `api.js` 为 CJS + mock fetch），公网冒烟回归——前端 hash 切换 ✅、新 JS 含 `ERROR_KINDS` 等标记 ✅、`/api/hot` 200 4 平台 179 条 ✅、`/api/favorite` 200 ✅。
+> - 未改：4 个云函数均未动；`api-contract.md` 未动（无接口契约变化）。
+>
+> ⚠️ **Day 23 待办（Yolo 控制台操作，AI 不做）**：
+> 1. 轮换 Day 20 暴露过的旧 API Key——按 `SECURITY.md` §1 步骤，4 个云函数换 Key 后删旧 Key；
+> 2. 给 `sync` 云函数配 `SYNC_TOKEN` 环境变量——按 `SECURITY.md` §2 步骤，候选 token `4171119ab998e7739771e86d816ab1ef`（也可本地 `openssl rand -hex 16` 自生成）。
+> 配完后我跑两轮回归命令：① 4 接口 200（API Key 切换成功）② 无 header POST /api/sync → 401 + 带 `x-sync-token` → 200（鉴权生效）。
+>
 ## 跨域（CORS）配置（Day 20 核实）
 
 静态托管域名 `https://rednews-d5gd5vdss6b4d2119-1499375657.tcloudbaseapp.com` 已在 CORS 白名单（Day 15 部署时框架自动加入），可省略手工配置。  

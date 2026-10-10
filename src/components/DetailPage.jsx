@@ -39,6 +39,7 @@ export default function DetailPage({
   status,
   items,
   errorMsg,
+  errorKind, // Day 23：透传给 ErrorState 分文案
   anchor,
   favorites = [],
   onToggleFavorite,
@@ -71,7 +72,7 @@ export default function DetailPage({
   if (status === DATA_STATUS.ERROR) {
     return (
       <div className="mx-auto max-w-2xl">
-        <ErrorState message={errorMsg || '数据源暂时不可用'} onRetry={retry} />
+        <ErrorState message={errorMsg || '数据源暂时不可用'} kind={errorKind} onRetry={retry} />
       </div>
     )
   }

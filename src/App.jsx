@@ -56,7 +56,8 @@ export default function App() {
 
   // 数据与状态：loading / success / empty / error 由 hook 统一管理
   // Day 20：mock → fetch /api/hot，useEffect 一行不用改
-  const { status, items, errorMsg, updatedAt, retry } = useHotData()
+  // Day 23：多取一份 errorKind（NETWORK / TIMEOUT / SERVER / API），ErrorState 分文案
+  const { status, items, errorMsg, errorKind, updatedAt, retry } = useHotData()
 
   // F2 平台选择：初始值从 localStorage 读（Day 10 上线）
   const [activePlatforms, setActivePlatforms] = useState(loadActivePlatforms)
@@ -79,13 +80,20 @@ export default function App() {
   }, [toast])
 
   // 首次进入：从云函数拉一次真收藏（页内所有展示都走这份本地 state）
+  // Day 23：拉取失败不再静默当「无收藏」——那是误导（拿不到 ≠ 没有），
+  // 标记 favoritesLoadFailed，收藏页顶部给一条可感知的降级提示；不打断首页。
+  const [favoritesLoadFailed, setFavoritesLoadFailed] = useState(false)
   useEffect(() => {
     const userKey = getUserKey()
     getFavorites(userKey)
-      .then(({ items }) => setFavorites(items))
+      .then(({ items }) => {
+        setFavorites(items)
+        setFavoritesLoadFailed(false)
+      })
       .catch(() => {
-        // 静默：拉不到收藏当无收藏处理，不打断首页
+        // 首页继续可用；收藏页会显示「云端收藏暂时没拉到」而不是「还没有收藏」
         setFavorites([])
+        setFavoritesLoadFailed(true)
       })
   }, [])
 
@@ -254,7 +262,9 @@ export default function App() {
 
             {status === DATA_STATUS.EMPTY && <EmptyState onRetry={retry} />}
 
-            {status === DATA_STATUS.ERROR && <ErrorState message={errorMsg} onRetry={retry} />}
+            {status === DATA_STATUS.ERROR && (
+              <ErrorState message={errorMsg} kind={errorKind} onRetry={retry} />
+            )}
 
             {/* 后续步骤待办（Day 20：Day 17 这条已闭环，划掉） */}
             <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
@@ -267,6 +277,7 @@ export default function App() {
                 <li><span className="text-emerald-400">Day 20 已完成</span> · 前端从 mock 切到真接口（/api/hot + /api/favorite）</li>
                 <li><span className="text-emerald-400">Day 21 已完成</span> · 补百度数据源 + 平台「筹备中」标注 + 空态三分</li>
                 <li><span className="text-emerald-400">Day 22 已完成</span> · DELETE /api/favorite 上线：取消收藏走真接口（幂等），toggleFavorite 同步</li>
+                <li><span className="text-emerald-400">Day 23 已完成</span> · 错误处理：请求超时防死锁 + 错误分类文案 + 收藏拉取失败可感知</li>
               </ul>
             </div>
           </>
@@ -279,6 +290,7 @@ export default function App() {
             status={status}
             items={items}
             errorMsg={errorMsg}
+            errorKind={errorKind}
             anchor={updatedAt}
             favorites={favoriteIds}
             onToggleFavorite={toggleFavorite}
@@ -291,6 +303,7 @@ export default function App() {
           <FavoritesPage
             status={status}
             favorites={favorites}
+            loadFailed={favoritesLoadFailed}
             onToggleFavorite={toggleFavorite}
             now={updatedAt}
           />
@@ -298,7 +311,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 22 数据操作闭环：DELETE /api/favorite 上线
+        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 23 错误处理与安全边界：超时 + 错误分类
       </footer>
 
       {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}

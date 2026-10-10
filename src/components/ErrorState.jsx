@@ -1,9 +1,34 @@
 // Day 8｜状态四：错误（没拿到数据）
+// Day 23｜错误分类：按 kind（NETWORK / TIMEOUT / SERVER / API）换人话文案
 // 错误态的三条底线（PRD 八、验收标准）：
 //   1. 不许白屏 —— 必须有一块东西告诉用户出事了
 //   2. 不许裸报错 —— 错误码要包在「人话说明 + 下一步动作」里
 //   3. 必须能重试 —— 用户自己有一个自救按钮
-export default function ErrorState({ message, onRetry }) {
+
+// 按 errorKind 给「标题 + 说明」——网络问题和服务器问题不是一回事：
+// 看到「网络连不上」用户会查自己的 WiFi，看到「服务端开小差」他知道等等再来。
+const COPY_BY_KIND = {
+  NETWORK: {
+    title: '网络连不上',
+    desc: '请求没发到服务器。多半是本地网络断了或信号差——检查一下网络连接，然后重试。',
+  },
+  TIMEOUT: {
+    title: '请求超时了',
+    desc: '服务器 10 秒内没回应。可能是网络慢或服务端繁忙，稍等几秒再试一次。',
+  },
+  SERVER: {
+    title: '服务端开小差了',
+    desc: '服务器收到了请求但没能正常处理（5xx）。这不是你的问题，稍等片刻再试。',
+  },
+}
+
+export default function ErrorState({ message, kind, onRetry }) {
+  // kind 没传 / 不认识的（比如 API 层 4xx）走默认文案
+  const copy = COPY_BY_KIND[kind] || {
+    title: '热搜数据没能加载出来',
+    desc: '这不是你的问题，是数据源那边没回应。页面没有白屏，你可以再试一次。',
+  }
+
   return (
     <div
       role="alert"
@@ -25,10 +50,8 @@ export default function ErrorState({ message, onRetry }) {
         <circle cx="12" cy="16.8" r="0.6" fill="currentColor" stroke="none" />
       </svg>
 
-      <h3 className="mt-4 text-lg font-semibold text-red-300">热搜数据没能加载出来</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
-        这不是你的问题，是数据源那边没回应。页面没有白屏，你可以再试一次。
-      </p>
+      <h3 className="mt-4 text-lg font-semibold text-red-300">{copy.title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">{copy.desc}</p>
 
       {message && (
         <p className="mx-auto mt-3 max-w-lg overflow-x-auto rounded-lg border border-slate-700/70 bg-slate-950/60 px-3 py-2 text-left font-mono text-xs text-slate-400">
