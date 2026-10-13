@@ -33,13 +33,13 @@ export default function BrandHeader({ stats, status, updatedAt }) {
             多平台热搜聚合 · 雷达站
           </span>
         </div>
-        {/* 登录入口：Day 23 才做（disabled：一眼看得出点不动） */}
+        {/* 登录入口：功能未上线，占位禁用（对外版去掉 Day 编号） */}
         <button
           className="shrink-0 cursor-not-allowed rounded-full border border-slate-700 px-4 py-1.5 text-sm text-slate-400 opacity-60"
           disabled
-          title="登录功能 Day 23 上线"
+          title="登录功能即将上线"
         >
-          登录（Day 23）
+          登录
         </button>
       </div>
 
@@ -84,13 +84,10 @@ export default function BrandHeader({ stats, status, updatedAt }) {
         </div>
       </div>
 
-      {/* 进度指示 */}
+      {/* 统计条（v1.0 起去掉开发进度 Day 计数：对外正式版不显示内部打卡信息） */}
       <div className="border-t border-slate-800/60 bg-slate-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-6 py-2 text-xs text-slate-400">
-          <span>
-            第 4 周 · <span className="text-orange-400">Day 23</span>
-            <span className="text-slate-400">／28</span> 　 错误处理与安全边界：超时 + 错误分类
-          </span>
+          <span>多平台热搜聚合 · 实时感知全网动态</span>
           <span>
             {stats.platformCount} 个平台已接入 · 共 {stats.total} 条
           </span>
