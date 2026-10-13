@@ -71,6 +71,19 @@
 > - **不顺手修的 Bug 清单**（Day 24 任务要求「记录下来但不修」）：
 >   1. 微博接口本身 `realpos=4` 出现两次（30 条数据里有 2 条 rank=4）—— 上游数据质量问题，记入 Day 25+ 选题候选。
 >
+> ## 发布前检查 Skill（Day 25）
+>
+> 项目级 Skill：`.workbuddy/skills/verify-project/SKILL.md`（与 Day 12 的 frontend-guidelines 同级，已入库）。C1–C10 十项检查，每项标注来源踩坑日与通过标准，发布前一句话让 AI 复用。
+>
+> - **设计决定**（与直觉不同的两处，写进了 Skill）：
+>   1. C9 数据库检查走 `/api/hot` 真实数据而非 `/api/health`——health 是 Day 15 最小实现不连库，用 health 验库是假检查
+>   2. C6 只做 401 反向验证（无 token 必须被拒）——正向验证要真值，token 不进 Skill/不进 git，留给 Yolo 本人在终端跑
+> - **C7 分级**：条数超单次上限 = 累积 bug 复发（FAIL，Day 24 病）；rank 重复但条数不超 = 上游数据质量（WARN + 列出 rank，不阻断发布，避免误报淹没真警报）
+> - **实跑三轮**（证据 `.workbuddy/screenshots/day25-verify-results.txt`，本地不进 git）：
+>   1. 第一轮：9 PASS + 1 FAIL（C5 缺 `.env.example`，真实缺口被如实抓出）+ 1 WARN（微博 rank=7）
+>   2. 修正：补 `.env.example`（列出云函数环境变量清单，不含真值）；同时发现并修正 Skill 自身漏报——C5 的 grep `^\.env` 匹配不到 `!.env.example` 反例行，改为 `grep -nE '^!?\.env'`
+>   3. 第二轮回归：10 PASS + 1 WARN；诱饵测试——植入假 JWT 密钥，C4 精确报出文件+行号（FAIL），删除后恢复 PASS，证明不虚报
+>
 > ---
 
 ## 跨域（CORS）配置（Day 20 核实）
