@@ -1,6 +1,6 @@
 ---
 name: verify-project
-description: 热浪 TREND WAVE 的发布前检查清单（Day 25 建立）。改完代码、部署后、或每次发布前运行：覆盖公网首页、健康接口、收藏读写闭环、Git 密钥安全、.gitignore、sync 鉴权、各平台数据卫生（Day 24 累积 bug 回归）、CORS 预检、数据库连通、CloudBase 额度，逐项输出 PASS/FAIL + 证据。说「运行 verify-project」或「发布前检查」即触发。
+description: 热浪 TREND WAVE 的发布前检查清单（Day 25 建立，Day 27 补 C11）。改完代码、部署后、或每次发布前运行：覆盖公网首页、健康接口、收藏读写闭环、Git 密钥安全、.gitignore、sync 鉴权、各平台数据卫生（Day 24 累积 bug 回归）、CORS 预检、数据库连通、CloudBase 额度、对外页面无开发痕迹（Day 27），逐项输出 PASS/FAIL + 证据。说「运行 verify-project」或「发布前检查」即触发。
 ---
 
 # 发布前检查（verify-project）
@@ -25,6 +25,9 @@ description: 热浪 TREND WAVE 的发布前检查清单（Day 25 建立）。改
 1. `curl -s -o /dev/null -w "%{http_code}" <前端托管地址>/` → 必须 200
 2. `curl -s <API网关>/api/hot` → 必须 `ok: true` 且 `items` 非空
 **通过**：两步都达标。任一步失败或 items 为空（可能只剩 seed）= FAIL。
+**取 bundle 文件名时注意**：vite 的 hash 里**含连字符**（如 `index-PbvZW-YW.js`），
+正则要写 `index-[A-Za-z0-9_-]+\.js`。写成 `[A-Za-z0-9]+` 会静默抓空字符串，
+后续比较 hash 的步骤全部失效但不报错（Day 27 踩过）。
 
 ### C2 健康接口正常
 **来源**：Day 15 链路起点。注意 health 是最小实现，**不连数据库**，数据库检查看 C9。
@@ -86,7 +89,24 @@ description: 热浪 TREND WAVE 的发布前检查清单（Day 25 建立）。改
 ### C10 记录剩余额度和到期时间（提醒性质，FAIL 不阻断发布）
 **来源**：Day 15 环境档案——免费体验版会静默到期，公网地址失效前不会提前很久提醒。
 **命令**：`npx -y -p @cloudbase/cli@latest tcb env list`（先 unset 代理）
-**输出**：报一行「环境 ID / 到期时间」。到期日 90 天内要提醒 Yolo 安排 Day 27 备份。
+**输出**：报一行「环境 ID / 到期时间」。到期日 90 天内要提醒 Yolo 安排 Day 27 备份。用量明细用 `tcb env usage -e <envId>`。
+
+### C11 对外页面无开发痕迹（Day 27 第三方试用发现的真人卡点）
+**来源**：Day 27 请真人试用，反馈「其他都挺好，但还是有 Day 打卡痕迹」——页眉进度条、
+首页底部「后续步骤待办」面板（Day 10–23 八条进度）、footer「28 天 Vibe Coding 计划 · Day 23 …」。
+C1 只看状态码和接口数据，**完全抓不到这类残留**，所以单列一项。
+**怎么查**（三个视图都要过，别只查首页）：
+1. 取线上 bundle：`js=$(curl -s <前端托管地址>/ | grep -oE 'index-[A-Za-z0-9_-]+\.js')`；
+   `curl -s <前端托管地址>/assets/$js -o tmp-check.js`（**先确认文件真下下来了**：`wc -c` 不为 0，
+   否则 grep 全 0 命中是假通过——Day 27 踩过）
+2. `grep -o "关键词" tmp-check.js | wc -l`，关键词至少含：
+   `Day `（带空格，避免误伤）、`已完成`、`待办`、`Vibe`、`PRD`、`打卡`
+3. 真机 DOM 复核（bundle 可能被拆包/hash 变化导致漏看）：打开首页 / `#/detail/<任一 id>` / `#/favorites`，
+   各跑 `document.body.innerText` 过滤同样的关键词
+4. 清理临时文件（删不掉就确认文件已不在）
+**通过**：bundle 与三个视图的 DOM 文本全部 0 命中。任何一处命中 = FAIL，报出命中关键词与所在视图。
+**已知会误伤、必须排除的**：`src/lib/mockData.js` 的 **import 路径**（文件名里带 mock，不是残留在页面的文案）；
+代码注释里的 Day（不渲染，不算问题）。判定依据只有一条：**它会不会出现在用户看到的页面上**。
 
 ## 输出格式（照这个表格交）
 
@@ -102,5 +122,7 @@ description: 热浪 TREND WAVE 的发布前检查清单（Day 25 建立）。改
 
 - 任何命令执行失败、超时、拿不到输出 → 该项 FAIL，写明实际错误。
 - 证据必须含命令原文和关键输出行，不许只写结论。
+- **别让验证自己骗自己**：`grep -c` 在 0 命中时 exit code = 1，写成 `n=$(grep -c ... || echo 0)`
+  会把「文件没下下来」和「真的 0 命中」混成同一个结果。先 `wc -c` 确认证据文件存在且非空，再统计。
 - C7 的 WARN 级必须列出具体 rank 与标题，不许笼统写「有重复」。
-- 检查完毕删掉自己产生的临时数据（C3 的临时收藏已通过 DELETE 清理，无需额外动作）。
+- 检查完毕删掉自己产生的临时数据（C3 的临时收藏已通过 DELETE 清理；C11 的 tmp-check.js 要删）。
