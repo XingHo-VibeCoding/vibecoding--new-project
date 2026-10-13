@@ -9,6 +9,10 @@ dist/
 build/
 .vite/
 .npm-cache/
+# Day 26 回滚备份快照（本地保留，不入仓）
+dist-v1.0/
+dist-prev/
+dist-*/
 
 # 日志与临时
 *.log
