@@ -265,21 +265,6 @@ export default function App() {
             {status === DATA_STATUS.ERROR && (
               <ErrorState message={errorMsg} kind={errorKind} onRetry={retry} />
             )}
-
-            {/* 后续步骤待办（Day 20：Day 17 这条已闭环，划掉） */}
-            <div className="mt-10 rounded-xl border border-dashed border-slate-700/80 bg-slate-900/20 p-5">
-              <p className="text-xs font-medium text-slate-400">后续步骤待办</p>
-              <ul className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-400 sm:grid-cols-2">
-                <li><span className="text-emerald-400">Day 10 已完成</span> · F2 平台选择栏（提前上线）</li>
-                <li><span className="text-emerald-400">Day 11 已完成</span> · F5 收藏交互</li>
-                <li><span className="text-emerald-400">Day 12 已完成</span> · F3 关键词 / 分类筛选（frontend-guidelines Skill）</li>
-                <li><span className="text-emerald-400">Day 13 已完成</span> · F4 详情页 + 三视图路由（我的收藏上线）</li>
-                <li><span className="text-emerald-400">Day 20 已完成</span> · 前端从 mock 切到真接口（/api/hot + /api/favorite）</li>
-                <li><span className="text-emerald-400">Day 21 已完成</span> · 补百度数据源 + 平台「筹备中」标注 + 空态三分</li>
-                <li><span className="text-emerald-400">Day 22 已完成</span> · DELETE /api/favorite 上线：取消收藏走真接口（幂等），toggleFavorite 同步</li>
-                <li><span className="text-emerald-400">Day 23 已完成</span> · 错误处理：请求超时防死锁 + 错误分类文案 + 收藏拉取失败可感知</li>
-              </ul>
-            </div>
           </>
         )}
 
@@ -311,7 +296,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
-        热浪 TREND WAVE · 28 天 Vibe Coding 计划 · Day 23 错误处理与安全边界：超时 + 错误分类
+        热浪 TREND WAVE · 多平台热搜聚合雷达站 · 数据来自各平台公开热榜
       </footer>
 
       {/* Day 11：收藏反馈提示条（成功 / 取消 / 失败三态，2.5 秒自动消失） */}
