@@ -101,6 +101,35 @@ Project1/
 └── .gitignore
 ```
 
+> ⚠️ 上面是 **Day 7 的规划图**，随开发有偏移。**以下为 Day 28 核对后的实际结构**，接手请以这段为准：
+>
+> ```
+> Project1/
+> ├── src/
+> │   ├── App.jsx                    # 顶层：三视图切换 + 数据状态机编排
+> │   ├── components/                # 11 个组件（不做 pages/ 目录，视图内联在这里）
+> │   │   ├── BrandHeader / ViewNav / PlatformSelector / PlatformColumn
+> │   │   ├── HotItem / FilterBar / DetailPage / FavoritesPage
+> │   │   └── LoadingState / EmptyState / ErrorState
+> │   ├── hooks/
+> │   │   ├── useHashRoute.js         # 自写 hash 路由（#/ 、#/detail/<id> 、#/favorites）
+> │   │   └── useHotData.js           # 数据状态机：loading/success/empty/error
+> │   └── lib/
+> │       ├── api.js                 # 调云函数（10s 超时 + 错误分类）
+> │       ├── mockData.js            # 静态：分类色板 / 平台枚举（含 ready 标记）
+> │       └── userKey.js             # 匿名用户标识（本地 UUID）
+> ├── functions/                     # 云函数（不是 api/ 目录）
+> │   ├── health/                    # GET /api/health
+> │   ├── hot/                       # GET /api/hot（4 平台真数据）
+> │   ├── favorite/                  # GET/POST/DELETE /api/favorite
+> │   └── sync/                      # POST /api/sync（抓 weibo/douyin/bilibili/baidu）
+> └── db/
+>     ├── schema.sql                 # 2 张表：trends / favorites（+索引）
+>     └── seed.sql                   # 种子数据（Day 20 后禁跑）
+> ```
+>
+> **相较规划的主要变化**：① 视图在 `src/components/` 而非 `src/pages/`；② 云函数目录是 `functions/` 不是 `api/`；③ 没做 `auth/`（未知 `preferences/`，平台选择暂存 localStorage）；④ 没做 `storage.js`/`auth.js`（匿名 `userKey`）；⑤ 表是 2 张不是 5 张。
+
 ---
 
 ## 四、数据模型
