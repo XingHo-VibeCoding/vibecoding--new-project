@@ -187,10 +187,17 @@ function header(event, name) {
   return h[name] || h[name.toLowerCase()] || h[name.toUpperCase()]
 }
 
+// 定时触发器（SCF Timer）直接调用函数，不带任何 HTTP 头，固定带 Type: 'Timer'。
+// 用它区分「云平台内部触发」和「公网经 API 网关进来的请求」。
+function isTimerEvent(event) {
+  return !!(event && (event.Type === 'Timer' || event.type === 'timer'))
+}
+
 exports.main = async function (event) {
-  // 可选鉴权：配了 SYNC_TOKEN 才校验
+  // 可选鉴权：配了 SYNC_TOKEN 才校验。
+  // 定时触发不是公网入口（网关走不到这里），放行；公网请求依旧必须带 x-sync-token。
   const token = process.env.SYNC_TOKEN
-  if (token && header(event, 'x-sync-token') !== token) {
+  if (token && !isTimerEvent(event) && header(event, 'x-sync-token') !== token) {
     return jsonOut(401, { ok: false, error: { code: 'UNAUTHORIZED', message: '同步令牌无效（请求头 x-sync-token）' } })
   }
 
