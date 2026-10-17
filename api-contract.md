@@ -83,7 +83,7 @@
 }
 ```
 
-- **约定**：`heat` 为整数（原始热度）；`category` 枚举 = entertainment / society / tech / finance / sports / gaming / **general**（general 为 Day 17 真实同步数据专用，三个公开接口不提供分类；前端配色 Day 18 跟上）。字段与前端现有 `mockData.js` 的 HotItem 结构**一字不差**，Day 17 只换数据源不改前端。
+- **约定**：`heat` 为整数（原始热度）；`category` 枚举 = entertainment / society / tech / finance / sports / gaming / **general**。**分类语义（2026-10-14 更新）**：四家公开接口都不提供分类，`category` 由同步侧按标题关键词推断（`functions/sync/categories.js`），推断不出来的一律 `general`（综合 = 其他桶）。**这是本项目的启发式分组，不是平台官方分类**，对外文案不得写成「官方分类」。字段与前端现有 `mockData.js` 的 HotItem 结构**一字不差**，Day 17 只换数据源不改前端。
 - **实现说明**：云函数 `hot` 通过 CloudBase HTTP API（PostgREST）读 `trends` 表，取**最新有数据的 trend_date**（不写死"今天"，同步没跑的早晨不空屏）。取数密钥 = 函数环境变量（`CLOUDBASE_API_KEY` 或控制台注入的 `CLOUDBASE_APIKEY`，两个名字都认）。
 - **实测记录**：2026-10-07 公网 200，返回 12 条（6 平台 × 2），`heat` 为整数、字段 camelCase 与契约一致。
 
@@ -153,7 +153,7 @@
   - 条数口径按各平台接口的实际返回：微博 30 条、B站 50 条（接口 `limit=50`）、抖音取接口返回的全部（约 45 条）、百度 50 条；四平台并行，单平台失败不影响其他；
   - `trend_date` 按**北京时间**（UTC+8）计算，避免云函数 UTC 时区在 0–8 点把当天算成前一天；
   - 写入用 PostgREST upsert（`on_conflict=platform,title,trend_date` + `Prefer: resolution=merge-duplicates`），重复执行不产生重复行；
-  - 同步数据 `category` 固定 `'general'`（公开接口不提供分类）；`id` = `{platform}-{trend_date}-{md5(title) 前 8 位}`（不含 rank——排名会变，id 必须稳定，`favorites` 外键锚定它）。
+  - 同步数据 `category` 按标题关键词推断（`functions/sync/categories.js`，推断不出留 `general`；公开接口不提供分类）；`id` = `{platform}-{trend_date}-{md5(title) 前 8 位}`（不含 rank——排名会变，id 必须稳定，`favorites` 外键锚定它）。
   - **百度特例（Day 21）**：响应结构为 `data.cards[]` → 取 `component === 'tabTextList'` → `content[0].content[]`；数组第 0 项是 `isTop: true` 的置顶条目（不带 `index`），**必须剔除**，否则会和真正的第 1 名撞 `rank`；其余按下标重新编号。该接口**不返回热度值**，`heat` 记 `0`，前端对 `heat === 0` 的条目隐藏热度块。
 - **未接入的平台（Day 21 实测）**：知乎 `api/v3/feed/topstory/hot-lists/total` 返回 **401 身份未经过验证**（需登录 Cookie，云端无稳定凭据）；小红书无公开榜单接口（需登录态 + 前端签名）。两者不做假数据填充，前端在选择栏与空列标注「数据源筹备中」。
 
@@ -191,7 +191,7 @@
 | title | TEXT NOT NULL | 热搜标题 |
 | rank | SMALLINT | 排名（≥1，TOP50） |
 | heat | BIGINT | 原始热度整数 |
-| category | TEXT CHECK | 7 分类枚举：entertainment/society/tech/finance/sports/gaming/general（general 为 Day 17 同步数据专用） |
+| category | TEXT CHECK | 7 分类枚举：entertainment/society/tech/finance/sports/gaming/general（由同步侧按标题关键词推断，推断不出为 general；见 `docs/CATEGORY_CLASSIFIER.md`） |
 | url | TEXT | 跳原文外链（可空） |
 | published_at | TIMESTAMPTZ | 抓取/发布时刻，API 层转 ISO 8601 UTC |
 | trend_date | DATE | 所属榜单日期 |
@@ -224,3 +224,4 @@
 | 2026-10-08 | v0.5 | Day 18：POST /api/favorite 定稿并上线——重复收藏由「幂等 200」改为 409 明确拒绝（对齐手册 Day 18 完成标准），补齐 userKey/itemId 校验与 itemId 存在性检查 |
 | 2026-10-08 | v0.6 | Day 21：POST /api/sync 新增百度数据源（榜单 3 → 4 个平台），明确百度置顶项剔除与 heat=0 口径；记录知乎 401 / 小红书无公开接口的实测结论与「数据源筹备中」的降级约定 |
 | 2026-10-09 | v0.7 | Day 22：DELETE /api/favorite 实现上线（取消收藏，幂等 200）；新增「五、PATCH 范围说明」——favorites 是开关式、trends 由 sync 写，本项目当前无可写字段，**PATCH 接口不暴露** |
+| 2026-10-14 | v0.8 | 分类恢复：四家公开接口都不给分类，改由同步侧按标题关键词推断（新增 `functions/sync/categories.js` + `scripts/classify-preview.cjs`），推断不出留 general；修「列表标签全是综合、筛选栏 6 个分类点了 0 条」；明确 category 是启发式分组而非平台官方分类 |

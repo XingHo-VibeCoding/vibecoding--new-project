@@ -33,6 +33,7 @@
 const crypto = require('crypto')
 const { apiConfigured } = require('./rest')
 const trendsRepository = require('./repositories/trendsRepository')
+const { classifyCategory } = require('./categories')
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -161,7 +162,10 @@ function toRow(platform, item, trendDate, fetchedAt) {
     title: item.title,
     rank: item.rank,
     heat: item.heat,
-    category: 'general', // 三个公开接口都不提供分类，统一标 general（Day 18 前端配色跟上）
+    // 四家公开接口都不返回分类字段（Day 17 起一律写死 general，导致列表全是「综合」）。
+    // 现在按标题关键词归类，判断不出来的条目仍然留 general。
+    // 词表与规则见 ./categories.js —— 是启发式推断，不是平台官方分类。
+    category: classifyCategory(item.title),
     url: searchUrl(platform, item.title),
     published_at: fetchedAt,
     trend_date: trendDate,
